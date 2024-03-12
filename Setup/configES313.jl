@@ -3,7 +3,7 @@
 # ------------------------------------------------- #
 
 # set the proxy server setting if required (on CDN)
-ENV["HTTP_PROXY"] = "http://CDNUSER:CDNPSW@dmzproxy005.idcn.mil.intra:8080"
+ENV["HTTP_PROXY"] = "xxx"
 # set the path
 downloadfolder = joinpath(homedir(),"Documents")
 
