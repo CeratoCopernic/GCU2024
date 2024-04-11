@@ -4,6 +4,16 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ c7e31109-3c17-4880-b870-6dd45eb29aa1
 begin
 	using Pkg
@@ -11,9 +21,15 @@ begin
 	Pkg.activate(pwd())
 	#using NativeSVG
 	using PlutoUI
-	using SimpleDrawing
-	using Plots
+	using Pluto
+	#using SimpleDrawing
+	#using Plots
+	#using Interact
 	using PrettyTables
+	#using Genie
+	#using Observables
+	#using GLMakie
+	using HypertextLiteral
 end
 
 # ╔═╡ b9b43e1a-fac4-403c-9bd7-02e9126f0ca8
@@ -35,7 +51,7 @@ Ce notebook `Pluto` est structuré de sorte à faciliter la compréhension des a
 **REMARQUE** : Il est vivement déconseillé de modifier quoi que ce soit dans la partie A, sous risque de modifier le fonctionnement du jeu. Lors du déroulement du jeu, seule la partie B doit être modifiée. "
 
 # ╔═╡ 27d48cc9-69bb-49f1-8290-ac821e6f77d9
-md" ## Partie A - Fonctions du jeu"
+md" ## PARTIE A - FONCTIONS DU JEU"
 
 # ╔═╡ 9462050f-92ca-4c33-b1f8-afcc80ede3cf
 md" ### 1. Squelette du jeu : les structures"
@@ -405,49 +421,49 @@ Nous avons à présent toutes les fonctions qui permettent de créer le monde et
 	- Débiter le portefeuille de la troupe qui achhète du prix que coûte le bâtiment qu'elle ajoute. 
 	"""
 function Add_Entity(World_Matrix,Actors_Matrix,Terr::Territoire, Entity::String)
-	Actor = Terr.Troupe 
-	Data = Display_MilInfo(World_Matrix,Actors_Matrix,Actor::String)
+	Actor = Terr.Troupe
+	ID = Terr.CaseID
+	Data = Assign_MilQties(World_Matrix,Actors_Matrix,Actor::String)
 	Cost = [0 0 0 0]
 	if Entity == "Ferme"
 		if Terr.Ferme == false
 			Cost = Cas_Cost
 			Terr.Ferme = true
 		elseif Terr.Ferme == true
-			with_terminal() do
-				println("Le territoire contient déjà une ferme.")
-			end
+			pr = "Achat non effectué : Le territoire contient déjà une ferme."
+			pr = "Achat effectué : Les $Actor ont construit une ferme sur le territoire n°$ID."
 		end
 	elseif Entity == "Caserne"
 		if Terr.Caserne == false
 			Cost = Cas_Cost
 			Terr.Caserne = true
+			pr = "Achat effectué : Les $Actor ont construit une caserne sur le territoire n°$ID."
 		elseif Terr.Caserne == true
-			with_terminal() do
-				println("Le territoire contient déjà une caserne.")
-			end
+			pr = "Achat non effectué : Le territoire contient déjà une caserne."
 		end
 	elseif Entity == "Port"
 		if Terr.Port == false
 			Cost = Port_Cost
 			Terr.Port = true
+			pr = "Achat effectué : Les $Actor ont construit un port sur le territoire n°$ID."
 		elseif Terr.Port == true
-			with_terminal() do
-				println("Le territoire contient déjà un port.")
-			end
+			pr = "Achat non effectué : Le territoire contient déjà un port."
 		end
 	elseif Entity == "Bateau"
 		Cost = Boat_Cost
 		Terr.Bateaux = Terr.Bateaux+1
+		pr = "Achat effectué : Les $Actor ont ajouté un bâteau sur le territoire n°$ID."
 	elseif Entity == "Soldat"
 		Cost = Sold_Cost
 		Terr.Soldats = Terr.Soldats+1
+		pr = "Achat effectué : Les $Actor ont ajouté un soldat sur le territoire n°$ID."
 	end
 	#Ordre de la matrice Cost : Bois, Pierre, Blé, Minerais
 	Data.Bois = Data.Bois-Cost[1]
 	Data.Pierre = Data.Pierre-Cost[2]
 	Data.Blé = Data.Blé-Cost[3]
 	Data.Minerais = Data.Minerais-Cost[4]
-	return Terr
+	return pr
 end
 # Note : ne fait pour le moment rien si une entité bool existe déjà (with_terminal ne rend rien je dois réfléchir à ça)
 # Note : Pour le moment, aucune vérification n'est faite sur si oui ou non la troupe a assez d'argent pour acheter le territoire (à changer).
@@ -464,23 +480,22 @@ Elle retourne un message qui traduit le statut d'exécution de la fonction. NB :
 	"""
 function Transfer_Troups(World_Matrix,TerrInit::Territoire,TerrDest::Territoire,Nbr)
 	if TerrInit.Troupe == TerrDest.Troupe
+		Trp = TerrInit.Troupe
+		Terr_it = TerrInit.CaseID
+		Terr_dt = TerrDest.CaseID
 		if TerrInit.Soldats > Nbr
 			TerrInit.Soldats = TerrInit.Soldats-Nbr
 			TerrDest.Soldats = TerrDest.Soldats+Nbr
+			pr = "Transfert effectué : $Nbr Soldats ont été transférés du territoire n°$Terr_it vers le territoire n°$Terr_dt par les $Trp"
 		elseif TerrInit.Soldats == Nbr
-			with_terminal() do
-				println("Vous devez au moins garder un soldat sur le territoire pour pouvoir l'occuper")
-			end
+			pr = "Transfert impossible : vous devez au moins garder un soldat sur le territoire pour pouvoir l'occuper"
 		else
-			with_terminal() do
-				println("Le transfert est impossible : vous n'avez pas assez de soldat sur le territoire initial")
-			end
+			pr = "Transfert impossible : vous n'avez pas assez de soldats sur le territoire initial"
 		end
 	else
-		with_terminal() do
-			println("Vous devez choisir des territoires qui vous appartiennent")
-		end
+		pr = "Transfert impossible : Vous devez choisir des territoires qui vous appartiennent"
 	end
+	return pr
 end
 #Note : ne vérifie pas si les territoires sont adjacents...
 
@@ -503,36 +518,40 @@ function Ressource2Salt(Actors_Matrix,Troupe::String,Ressource::String,Quantity)
 	# Quantity doit être exprimée en grammes
 	Trp = Find_Troup(Troupe,Actors_Matrix)
 	if Ressource == "Blé"
-		Cost = 100*Quantity
+		Cost = Quantity
+		Salt_obtnd = Quantity/100
 		if Trp.Blé >= Cost
 			Trp.Blé = Trp.Blé-Cost
-			pr = println("$Quantity grammes de sel doivent être versés aux $Troupe")
+			pr = "Les $Troupe viennent d'échanger $Quantity unités de blé contre $Salt_obtnd grammes de sel"
 		else
-			pr = println("Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange")
+			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
 		end
 	elseif Ressource == "Pierre"
-		Cost = 100*Quantity
+		Cost = Quantity
+		Salt_obtnd = Quantity/100
 		if Trp.Pierre >= Cost
 			Trp.Pierre = Trp.Pierre-Cost
-			pr = println("$Quantity grammes de sel doivent être versés aux $Troupe")
+			pr = "Les $Troupe viennent d'échanger $Quantity unités de pierre contre $Salt_obtnd grammes de sel"
 		else
-			pr = println("Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange")
+			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
 		end
 	elseif Ressource == "Minerais"
-		Cost = 100*Quantity
+		Cost = Quantity
+		Salt_obtnd = Quantity/100
 		if Trp.Minerais >= Cost
 			Trp.Minerais = Trp.Minerais-Cost
-			pr = println("$Quantity grammes de sel doivent être versés aux $Troupe")
+			pr = "Les $Troupe viennent d'échanger $Quantity unités de minerais contre $Salt_obtnd grammes de sel"
 		else
-			pr = println("Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange")
+			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
 		end
 	elseif Ressource == "Bois"
-		Cost = 100*Quantity
+		Cost = Quantity
+		Salt_obtnd = Quantity/100
 		if Trp.Bois >= Cost
 			Trp.Bois = Trp.Bois-Cost
-			pr = println("$Quantity grammes de sel doivent être versés aux $Troupe")
+			pr = "Les $Troupe viennent d'échanger $Quantity unités de bois contre $Salt_obtnd grammes de sel"
 		else
-			pr = println("Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange")
+			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
 		end
 	end
 	return pr
@@ -650,21 +669,68 @@ function Terr_Info(World_Matrix,Territoire::Int)
 	else
 		Port = "Non"
 	end	
-	with_terminal() do
-		println("Territoire n°$Territoire -- $Propriétaire")
-		println("--------------------------------")
-		#println("Propriétaire : $Propriétaire")
-		println("Nombre de soldats : $Soldats")
-		println("Nombre de bateaux : $Bateaux")
-		println("Richesse en minerais : $Minerais")
-		println("Richesse en Blé : $Blé")
-		println("Richesse en Bois : $Bois")
-		println("Richesse en Pierre : $Pierre")
-		println("Présence d'une Ferme : $Ferme")
-		println("Présence d'une Caserne : $Caserne")
-		println("Présence d'un port : $Port")
-	end
+	pr2 = "Territoire n°$Territoire -- $Propriétaire"
+	pr3 = "--------------------------------"
+	pr4 = "Nombre de soldats : $Soldats"
+	pr5 = "Nombre de bateaux : $Bateaux"
+	pr6 = "Richesse en minerais : $Minerais"
+	pr7 = "Richesse en Blé : $Blé"
+	pr8 = "Richesse en Bois : $Bois"
+	pr9 = "Richesse en Pierre : $Pierre"
+	pr10 = "Présence d'une Ferme : $Ferme"
+	pr11 = "Présence d'une Caserne : $Caserne"
+	pr12 = "Présence d'un port : $Port"
+	pr_elem = [pr2, pr3, pr4, pr5, pr6, pr7, pr8, pr9, pr10, pr11, pr12]
+	return pr_elem
 end
+
+# ╔═╡ ac9c1cb6-78ad-4387-83c5-c83522f5bb6d
+"""
+		Properties_Info(World_Matrix,Actors_Matrix,Troupe::String,field::String)
+	Cette fonction est le premier pas dans le processus d'affichage des caractéristiques des territoires d'une troupe. Elle prend 4 arguments : 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs ;
+	- Le nom de la troupe dont on souhaite traiter les informations ;
+	- Le nom du champ que l'on souhaite afficher pour tous les territoires que la troupe possède.
+
+	Elle retourne un dictionnaire qui associe à chaque territoire la valeur que prend le champ spécifié en argument.
+
+	"""
+function Properties_Info(World_Matrix,Actors_Matrix,Troupe::String,field::String)
+	Prp = Properties(World_Matrix,Troupe)
+	Data = []
+	f_field = lowercase(field)
+	for element in Prp
+		Structure = Find_Terr(element,World_Matrix)
+		Dico = Dict([
+		    ("caseid", Structure.CaseID),
+		    ("troupe", Structure.Troupe),
+		    ("soldats", Structure.Soldats),
+		    ("bateaux", Structure.Bateaux),
+		    ("minerais", Structure.Minerais),
+		    ("blé", Structure.Blé),
+		    ("bois", Structure.Bois),
+		    ("pierre", Structure.Pierre),
+		    ("ferme", Structure.Ferme),
+		    ("caserne", Structure.Caserne),
+		    ("port", Structure.Port),
+		    ("isfluvial", Structure.IsFluvial),
+		    ("iscoast", Structure.IsCoast),
+		    ("ismountains", Structure.IsMountains)
+		])
+		Info = Dico[f_field]
+		push!(Data,Info)
+	end
+	DDIICCTT = Dict()
+	for i in 1:length(Prp)
+		line = Prp[i] => Data[i]
+		push!(DDIICCTT,line)
+	end
+	return DDIICCTT
+end
+
+# ╔═╡ 2e77c3fc-94bd-4dfe-a8b9-4302db6b85fb
+md"### 7. Fonctions \"`Execute()`\""
 
 # ╔═╡ 79b63986-ce3a-451e-be10-4bb90f76f93a
 md"### Notes Réunion 24 Mar 24
@@ -678,25 +744,277 @@ md"### Notes Réunion 24 Mar 24
 - Garde royale"
 
 # ╔═╡ 018f1d80-9fbc-4d36-a41e-319c86511b76
-md"## Partie B - Interface et tests"
+md"## PARTIE B - INTERFACE DE JEU"
 
 # ╔═╡ ce6b11f9-8230-4076-8135-12df833d4a82
 begin
-	World = World_Generator(236)
-	Troupes = Actors_Generators()
-	Temporary_WorldFiller(World,Troupes)
-	Update_LonesSituation(World,Troupes,"NoPrint")
+	World = World_Generator(236) #Génère un monde vide
+	Troupes = Actors_Generators() #Génère toutes les troupes
+	Temporary_WorldFiller(World,Troupes) #Simule une simulation de partie en cours
+	Update_LonesSituation(World,Troupes,"NoPrint") #Met à jour les avoirs de toutes les troupes
 	nothing
 end
 
-# ╔═╡ 1b04b90c-23b6-42ef-b08b-6ce65f181c28
-begin
-	New_Turn(World,Troupes)
+# ╔═╡ 91a757ac-e56c-4228-8cff-fbd25fa27714
+md"""### ACTIONS
+
+Sélectionnez ici l'action que le joueur souhaite exécuter : 
+
+ $(@bind Turn CheckBox()) Début d'un tour\
+ $(@bind Transfer CheckBox()) Transférer les troupes d'un territoire vers un autre\
+ $(@bind Buy CheckBox()) Acheter un bâtiment et le placer sur un de ses territoire\
+ $(@bind Salt CheckBox()) Acheter du sel avec des ressources\
+"""
+
+# ╔═╡ 55be7c75-ee34-4a2e-b02d-b69402f82672
+if Buy == true
+	@bind Adding_Data PlutoUI.confirm(
+		PlutoUI.combine() do Child
+			@htl("""
+			<h3>Achat d'un nouveau bâtiment</h3>
+			
+			<ul>
+			$([
+				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+				for name in ["Numéro d'identité du territoire concerné ", "Bâtiment que la troupe souhaite ajouter "]
+			])
+			</ul>
+			""")
+		end
+	)
+elseif Turn == true
+	md"""Veuillez, par sécurité, écrire : "`Je confirme qu'un nouveau tour doit avoir lieu`" : $@bind Mess_Turn PlutoUI.confirm(html"<input type=text>")"""
+elseif Transfer == true
+	@bind Transfer_Data PlutoUI.confirm(
+		PlutoUI.combine() do Child
+			@htl("""
+			<h3>Transfert de troupe(s)</h3>
+			
+			<ul>
+			$([
+				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+				for name in ["Numéro du territoire de départ ", "Numéro du territoire de destination ", "Nombre de troupes à transférer "]
+			])
+			</ul>
+			""")
+		end
+	)
+elseif Salt == true
+	@bind Salt_Data PlutoUI.confirm(
+		PlutoUI.combine() do Child
+			@htl("""
+			<h3>Conversion de ressource(s) en sel</h3>
+			
+			<ul>
+			$([
+				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+				for name in ["Troupe qui souhaite effectuer l'échange ","Type de ressource qu'on souhaite convertir en sel ", "Quantité de ressource que à échanger "]
+			])
+			</ul>
+			""")
+		end
+	)
+end
+
+# ╔═╡ 3b763c2f-83d8-4be6-9fb5-e6ce1881db52
+function Execute_Buy()
+	try
+		Entity_Type = Adding_Data[2]
+		Terr_Int = parse(Int64,Adding_Data[1])
+		Terr_Strct = Find_Terr(Terr_Int,World)
+		Trp = Terr_Strct.Troupe
+		pr = Add_Entity(World, Troupes,Terr_Strct,Entity_Type)
+		println(pr)
+	catch
+		with_terminal() do
+			println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer votre achat")
+		end
+	end
+end
+
+# ╔═╡ 1e15b72a-b0be-4045-961b-5e8de4cc9b4f
+function Execute_Transfer()
+	try
+		Nbr = parse(Int64,Transfer_Data[3])
+		Dep_Terr = parse(Int64,Transfer_Data[1])
+		Dep_Terr_Strct = Find_Terr(Dep_Terr,World)
+		Arr_Terr = parse(Int64,Transfer_Data[2])
+		Arr_Terr_Strct = Find_Terr(Arr_Terr,World)
+		Trp = Arr_Terr_Strct.Troupe
+		pr = Transfer_Troups(World,Dep_Terr_Strct,Arr_Terr_Strct,Nbr)
+		println(pr)
+	catch
+		with_terminal() do
+			println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer votre transfert")
+		end
+	end
+end
+
+# ╔═╡ a1b4005e-6e10-45ee-b018-6ff5c0a1a4a9
+function Execute_NewTurn()
+	try
+		if lowercase(Mess_Turn) == "je confirme qu'un nouveau tour doit avoir lieu"
+			New_Turn(World,Troupes)
+			pr = "Un nouveau tour a bien été effectué"
+		elseif Mess_Turn ≠ ""
+			pr = "Le message est mal écrit, veuillez recommencer"
+		end
+		println(pr)
+	catch
+		pr = "Veuillez écrire et envoyer le message suivant les instructions ci-dessus"
+		println(pr)
+	end
+end
+
+# ╔═╡ 8bb403e2-83e7-49b7-8c3c-b0d6c97f4aed
+function Execute_Ressource2Salt()
+	try
+		Trp = Salt_Data[1]
+		Qty = parse(Int64,Salt_Data[3])
+		Ressource = Salt_Data[2]
+		pr = Ressource2Salt(Troupes,Trp,Ressource,Qty)
+		println(pr)
+	catch
+		pr = "Veuillez remplir les cases puis cliquer sur envoyer pour confirmer l'échange"
+		println(pr)
+	end
+end
+
+# ╔═╡ 3daf9148-39d2-493c-96be-307d1e402436
+if Buy == true
+	Execute_Buy()
+elseif Turn == true
+	Execute_NewTurn()
+elseif Transfer == true
+	Execute_Transfer()
+elseif Salt == true
+	Execute_Ressource2Salt()
+end
+
+# ╔═╡ a0406049-10c0-4b93-9f0e-ac7eebe6d979
+md"""### AFFICHAGE
+
+Sélectionnez ici ce que vous souhaitez afficher :
+
+ $(@bind SitGen CheckBox()) Situation des troupes\
+ $(@bind PropTerr CheckBox()) Caractéristiques d'un territoire\
+ $(@bind PropTrp CheckBox()) Propriétés d'une troupe\
+"""
+
+# ╔═╡ 400579f3-b212-4902-b96e-8659c33245da
+if PropTerr == true
+	md"""Numéro d'identité du territoire concerné : $@bind TInfo PlutoUI.confirm(html"<input type=text>")"""
+elseif PropTrp == true
+	sp = html"&nbsp"
+	md""" **Cochez les informations que vous voulez voir apparaître** :\
+	$sp $(@bind cad CheckBox()) CaseID $sp $sp $sp $sp $(@bind tre CheckBox()) Troupe $sp $sp $sp $sp $(@bind bax CheckBox()) Bâteaux $sp $sp $sp $sp $(@bind mis CheckBox()) Minerais $sp $sp $sp $sp $(@bind ble CheckBox()) Blé $sp $sp $sp $sp $(@bind bos CheckBox()) Bois $sp $sp $sp $sp $(@bind pie CheckBox()) Pierre $sp $sp $(@bind fee CheckBox()) Ferme $sp $sp $sp $sp $sp $(@bind cae CheckBox()) Caserne $sp $sp $sp $(@bind pot CheckBox()) Port $sp $sp $sp $sp $sp $sp $sp $(@bind fll CheckBox()) Fluvial $sp $sp $sp $sp $sp $sp $(@bind cor CheckBox()) Côtier $sp $sp $(@bind mos CheckBox()) Mountains
+	
+	**Nom de la troupe concernée** : $@bind Ttp PlutoUI.confirm(html"<input type=text>")"""
+end
+
+# ╔═╡ 4a58cec4-778c-4594-ae25-2492acddc68b
+"""
+		Advanced_Properties_Info(World_Matrix,Actors_Matrix,Troupe::String)
+	Cette fonction est le deuxième pas dans le processus d'affichage des caractéristiques des territoires d'une troupe. Elle prend 3 arguments :
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs ;
+	- Le nom de la troupe dont on souhaite traiter les informations ;
+
+	Elle retourne un dictionnaire qui associe à chaque champ spécifié en cochant les cases (cf. interface du jeu), un dictionnaire qui reprend les valeurs de ce champ pour tous lesq territoires possédés par la troupe appelée en argument. Elle est à la base de la collecte des données nécessaire au bon fonctionnement de la fonction finale d'affichage, `Display_Properties_Info`, décrite ci-dessous.
+
+	"""
+function Advanced_Properties_Info(World_Matrix,Actors_Matrix,Troupe::String)
+	Asked_Elements = Dict()
+	button_labels = [cad, tre, bax, mis, ble, bos, pie, fee, cae, pot, fll, cor, mos]
+	button_names = ["CaseID", "Troupe", "Bateaux", "Minerais", "Blé", "Bois", "Pierre", "Ferme", "Caserne", "Port", "IsFluvial", "IsCoast", "IsMountains"]
+	buttons_dict = Dict(zip(button_names, button_labels))
+	for element in button_names
+		if buttons_dict[element] == true
+			Prps_Info = Properties_Info(World_Matrix,Actors_Matrix,Troupe,element)
+			push!(Asked_Elements,element => Prps_Info)
+		end
+	end
+	return Asked_Elements
+end
+
+# ╔═╡ 15ccf590-a109-4e7f-aa5a-b756d6fccbe9
+"""
+		Display_Properties_Info(World_Matrix,Actors_Matrix,Troupe::String)
+	Cette fonction sert à afficher les propriétés de tous les territoires que possèdent une troupe (troisème et dernier pas, donc, dans ce processus). Elle prend 3 arguments : 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs ;
+	- Le nom de la troupe dont on souhaite traiter les informations ;
+
+	Elle retourne une `pretty_table` qui contient toutes les informations nécessaires. Pour un exemple, cf. interface du jeu.
+	"""
+function Display_Properties_Info(World_Matrix,Actors_Matrix,Troupe::String)
+	API = Advanced_Properties_Info(World_Matrix,Actors_Matrix,Troupe::String)
+	Coln_header = []
+	Row_header_info = Properties(World_Matrix,Troupe)
+	Row_header = []
+	for element in Row_header_info
+		Row_header_elm = "Terr $element"
+		push!(Row_header,Row_header_elm)
+	end
+	pushfirst!(Row_header,"CHAMPS")
+	Data_mat = []
+	for key in keys(API)
+		push!(Coln_header,key)
+		Attributes = API[key]
+		Data_Cln = []
+		for little_key in keys(Attributes)
+			Data = Attributes[little_key]
+			push!(Data_Cln,Data)
+		end
+		push!(Data_mat,Data_Cln)
+	end
+	Data_mat_final = transpose(reduce(hcat,Data_mat))
+	Table = [Coln_header Data_mat_final]
+	uptrp = uppercase(Troupe)
+	with_terminal() do
+		println("INFORMATIONS SUR LES TERRITOIRES DES $uptrp")
+		println("Territoires possédés : $Row_header_info")
+		println("Informations plus précises :")
+		pretty_table(Table,body_hlines = collect(1:length(Coln_header));header = Row_header)
+	end
+end
+
+# ╔═╡ ca705873-8374-4baa-a4c4-65d1ccdb5698
+function Execute_TerrInfo()
+	try 
+		CaseID = parse(Int64,TInfo)
+		info_vec = Terr_Info(World,CaseID)
+		with_terminal() do
+			for element in info_vec
+				println(element)
+			end
+		end
+	catch
+		println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer votre transfert")
+	end
+end
+
+# ╔═╡ 31f0c518-740d-4d6b-be63-ee953d6f477b
+function Execute_Display_Properties_Info()
+	try
+		Display_Properties_Info(World,Troupes,Ttp)
+	catch
+		pr = "Veuillez cocher les informations à montrer, préciser le nom de la troupe en remplissant la case, puis cliquer sur envoyer pour afficher les informations"
+		println(pr)
+	end
+end
+
+# ╔═╡ 89a6d635-ff6d-44d3-b2f7-7f64bc12ea47
+if SitGen == true
 	Update_LonesSituation(World,Troupes,"Print")
+elseif PropTerr == true
+	Execute_TerrInfo()
+elseif PropTrp == true
+	Execute_Display_Properties_Info()
 end
 
 # ╔═╡ Cell order:
-# ╟─c7e31109-3c17-4880-b870-6dd45eb29aa1
+# ╠═c7e31109-3c17-4880-b870-6dd45eb29aa1
 # ╟─b9b43e1a-fac4-403c-9bd7-02e9126f0ca8
 # ╟─27d48cc9-69bb-49f1-8290-ac821e6f77d9
 # ╟─9462050f-92ca-4c33-b1f8-afcc80ede3cf
@@ -731,7 +1049,22 @@ end
 # ╟─554d8c87-8a34-4ca2-98ff-443dc8226381
 # ╟─d45625d4-9e8f-4724-941e-e9b514a27651
 # ╟─82ce8603-027a-4197-8d9e-d6c471e416ed
+# ╟─ac9c1cb6-78ad-4387-83c5-c83522f5bb6d
+# ╟─4a58cec4-778c-4594-ae25-2492acddc68b
+# ╟─15ccf590-a109-4e7f-aa5a-b756d6fccbe9
+# ╟─2e77c3fc-94bd-4dfe-a8b9-4302db6b85fb
+# ╠═3b763c2f-83d8-4be6-9fb5-e6ce1881db52
+# ╠═1e15b72a-b0be-4045-961b-5e8de4cc9b4f
+# ╠═ca705873-8374-4baa-a4c4-65d1ccdb5698
+# ╠═a1b4005e-6e10-45ee-b018-6ff5c0a1a4a9
+# ╠═8bb403e2-83e7-49b7-8c3c-b0d6c97f4aed
+# ╠═31f0c518-740d-4d6b-be63-ee953d6f477b
 # ╟─79b63986-ce3a-451e-be10-4bb90f76f93a
 # ╟─018f1d80-9fbc-4d36-a41e-319c86511b76
 # ╠═ce6b11f9-8230-4076-8135-12df833d4a82
-# ╠═1b04b90c-23b6-42ef-b08b-6ce65f181c28
+# ╟─91a757ac-e56c-4228-8cff-fbd25fa27714
+# ╟─55be7c75-ee34-4a2e-b02d-b69402f82672
+# ╟─3daf9148-39d2-493c-96be-307d1e402436
+# ╟─a0406049-10c0-4b93-9f0e-ac7eebe6d979
+# ╟─400579f3-b212-4902-b96e-8659c33245da
+# ╟─89a6d635-ff6d-44d3-b2f7-7f64bc12ea47
