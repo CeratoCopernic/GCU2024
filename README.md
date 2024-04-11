@@ -12,7 +12,7 @@ Le jeu est relativement complexe et il est physiquement compliqué de représent
 - Simplifier l'exécution des différents tours en automatisant la plupart des actions ;
 - Permettre aux joueurs d'accéder plus rapidement et de manière plus claire aux informations du jeu.
 
-Ce logiciel est codé en `Julia` (extension .jl) et l'interface utilisée est un notebook `Pluto` (il s'agit du document que vous êtes en train de lire). Un tutoriel pour installer tout le nécessaire pour faire tourner le code sera présenté dans un document PDF annexe.
+Ce logiciel est codé en `Julia` (extension .jl) et l'interface utilisée est un notebook `Pluto`. Un tutoriel pour installer tout le nécessaire pour faire tourner le code sera présenté dans un document PDF annexe.
 
 Ce notebook `Pluto` est structuré de sorte à faciliter la compréhension des administrateurs du jeu (chefs et Staff des Troupes). Il est divisé en 2 grandes parties :
 
