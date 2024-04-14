@@ -22,6 +22,7 @@ begin
 	#using NativeSVG
 	using PlutoUI
 	using Pluto
+	using Printf
 	#using SimpleDrawing
 	#using Plots
 	#using Interact
@@ -70,6 +71,7 @@ chaque territoire possède une série de caractéristique, à savoir :
 # ╔═╡ f29c16f1-b8a2-41d4-986b-4b83dec9032d
 mutable struct Territoire
 	CaseID::Int
+	Type::Int
 	Troupe::String
 	Soldats::Float64
 	Bateaux::Float64
@@ -78,7 +80,9 @@ mutable struct Territoire
 	Bois::Float64
 	Pierre::Float64
 	Ferme::Bool
-	Caserne::Bool
+	Scierie::Bool
+	Carrière::Bool
+	Mine::Bool
 	Port::Bool
 	IsFluvial::Bool
 	IsCoast::Bool
@@ -119,19 +123,38 @@ Dans cette section, les paramètres constants du jeu sont définis. Ceux-ci ne c
 # ╔═╡ 2bebe9c0-b5af-4336-825a-9add6581d21d
 # ENTRER ICI LES CARACTERISTIQUES FIXES DU JEU
 begin
-	const Coast = [3,4,8] #Liste des territoires côtiers
+	const Coast = [1,2,3,4,5,6,11,10,16,22,23,28,27,31,30,26,25,24,29,19,18,17,12,32,33,34,35,36,37,40,43,51,52,54,60,67,68,71,72,74,73,70,64,65,66,58,59,49,50,48,42,39,75,76,77,78,79,80,81,82,83,84,87,106,107,103,102,104,105,100,97,93,92,88,89,90,99,96,94,91,85,86,108,109,110,111,113,114,115,124,127,133,134,135,144,153,154,151,150,149,157,156,155,146,145,136,137,128,116,158,159,160,161,162,163,164,165,166,171,180,187,190,189,188,185,184,183,182,175,176,172,168,167,191,192,193,194,195,196,201,205,214,223,222,230,233,232,228,227,231,226,225,224,215,207,206,202,234,235,236,237,238,239,240,241,242,243,244,245,246] #Liste des territoires côtiers
 	const Fluv = [1,2,9] #Liste des territoires en bordure de fleuve
 	const Mount = [5,8,9] #Liste des territoires montagneux
-	const Farm_Cost = [10 10 0 0] #Ordre : Bois, Pierre, Blé, Minerais
-	const Cas_Cost = [15 15 0 0]
-	const Boat_Cost = [20 0 0 10]
+	const Farm_Cost = [90 100 0 0] #Ordre : Bois, Pierre, Blé, Minerais
+	const Mine_Cost = [90 100 0 0]
+	const Saw_Cost = [90 100 0 0]
+	const Carr_Cost = [90 100 0 0]
+	const Boat_Cost = [200 0 0 15]
 	const Sold_Cost = [0 0 0 10]
 	const SoldEntr_Cost = [0 0 10 0]
-	const Port_Cost = [50 50 0 0]
-	const Sal_Sold = 10
-	const Start_Ressources = [500 250 1000 100]
+	const Port_Cost = [150 300 0 0]
+	const Start_Ressources = [1100 1100 1500 100]
 	const Troupe_Names = ["Archers", "Hardis", "Paladins","Lanciers","Gueux","Preux","Vaillants","Chevaliers","Templiers","Servants","Autochtones"]
-	const World_Size = 236; 
+	const World_Size = 246
+	const Ref_Money = 500
+	const Bois_Val = [10, 10, 10, 10, 10, 10, 20, 20, 10, 10, 10, 20, 20, 10, 10, 10, 20, 20, 20, 10, 10, 10, 10, 20, 10, 10, 10, 10, 20, 10, 10, 0, 0, 0, 10, 10, 10, 20, 20, 10, 10, 20, 10, 10, 20, 20, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 20, 20, 20, 10, 10, 10, 10, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 10, 10, 10, 10, 20, 20, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 70, 70, 70, 70, 70, 70, 60, 60, 70, 70, 70, 70, 70, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 0, 0, 0, 20, 20, 20, 10, 10, 10, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 70, 70, 70, 70, 70, 70, 70, 70, 70, 10, 10, 60, 70, 10, 10, 60, 60, 60, 60, 60, 60, 60, 10, 10, 60, 60, 10, 10, 60, 10, 10, 10, 10, 60, 60, 60, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+	const Min_Val = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 10, 10, 10, 20, 20, 10, 10, 10, 20, 20, 10, 10, 10, 20, 10, 0, 0, 0, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 70, 60, 60, 70, 60, 60, 60, 70, 70, 70, 70, 60, 60, 60, 70, 70, 70, 70, 70, 70, 70, 70, 0, 0, 0, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 20, 20, 20, 20, 20, 20, 10, 10, 10, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 10, 20, 10, 10, 20, 20, 20, 10, 10, 10, 10, 10, 20, 20, 20, 20, 20, 10, 10, 10, 10, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 20, 20, 10, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 10, 10, 10, 10, 20, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 70, 70, 10, 10, 70, 70, 10, 10, 10, 10, 10, 10, 10, 70, 70, 10, 10, 60, 60, 10, 60, 60, 60, 70, 10, 10, 10, 60, 60, 60, 60, 60, 60, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+	const Pir_Val = [70, 70, 70, 70, 70, 70, 60, 60, 70, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 0, 0, 0, 20, 20, 20, 10, 10, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 20, 10, 20, 10, 20, 20, 10, 10, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 10, 10, 10, 10, 10, 20, 20, 20, 20, 10, 10, 10, 10, 20, 20, 20, 20, 20, 20, 10, 10, 20, 0, 0, 0, 60, 60, 60, 70, 70, 70, 60, 60, 60, 70, 70, 60, 60, 70, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 20, 20, 20, 10, 10, 10, 10, 20, 20, 20, 20, 20, 20, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+	const Blé_Val = [10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 10, 10, 10, 20, 10, 10, 10, 10, 10, 20, 20, 10, 10, 10, 20, 20, 10, 10, 20, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 10, 10, 10, 10, 10, 20, 20, 10, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 70, 60, 60, 70, 70, 60, 60, 70, 70, 10, 10, 10, 10, 10, 10, 20, 20, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 20, 20, 10, 10, 10, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 20, 20, 20, 20, 10, 10, 20, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 10, 10, 10, 20, 20, 20, 20, 20, 20, 20, 10, 10, 20, 20, 10, 10, 20, 10, 10, 10, 10, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+	const Types_Val = [2, 2, 3, 3, 2, 4, 3, 3, 3, 1, 3, 2, 2, 2, 1, 3, 2, 3, 2, 1, 4, 4, 1, 3, 2, 2, 3, 2, 3, 2, 3, 2, 1, 2, 2, 1, 3, 2, 2, 1, 1, 3, 2, 3, 2, 2, 2, 2, 3, 1, 2, 2, 2, 2, 3, 2, 3, 2, 2, 1, 3, 1, 3, 1, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 3, 3, 2, 2, 2, 2, 2, 3, 3, 2, 2, 2, 3, 3, 2, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 2, 3, 2, 1, 4, 4, 3, 3, 3, 2, 3, 3, 3, 2, 2, 3, 3, 3, 2, 4, 3, 2, 3, 2, 2, 3, 3, 3, 3, 2, 2, 3, 2, 2, 2, 3, 4, 3, 3, 3, 3, 3, 4, 4, 3, 2, 3, 3, 3, 3, 3, 4, 4, 3, 3, 2, 2, 1, 2, 2, 1, 3, 3, 3, 2, 3, 3, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 3, 1, 3, 3, 3, 3, 2, 2, 3, 4, 3, 2, 2, 3, 3, 3, 3, 2, 3, 3, 2, 3, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 4, 2, 4, 3, 3, 2, 2, 3, 3, 4, 3, 4, 3, 4, 3, 4, 3, 3, 4, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,0]
+	const C1 = collect(1:31)
+	const I1 = collect(32:34)
+	const C2 = collect(35:74)
+	const I2 = collect(75:77)
+	const C3 = collect(78:105)
+	const I3 = collect(106:107)
+	const C4 = collect(108:157)
+	const I4 = collect(158:160)
+	const C5 = collect(161:190)
+	const C6 = collect(191:233)
+	const I5 = collect(234:236)
+	const C0 = collect(237:246)
 	println("Constantes définies avec succès")
 end
 
@@ -217,7 +240,7 @@ end
 function World_Generator(Nbr_Terr)
 	World_Matrix = []::Any
 	for i in 1:Nbr_Terr
-		push!(World_Matrix,Territoire(i,"Autochtones",0,0,0,0,0,0,false,false,false,false,false,false))
+		push!(World_Matrix,Territoire(i,0,"Autochtones",0,0,0,0,0,0,false,false,false,false,false,false,false,false))
 	end
 	Coast_Terr(World_Matrix,Coast)
 	Fluv_Terr(World_Matrix,Fluv)
@@ -225,12 +248,48 @@ function World_Generator(Nbr_Terr)
 	return World_Matrix
 end
 
+# ╔═╡ 4e2210be-c52e-42b7-9bd8-3ed46e62a4e3
+function Start_Game()
+	World_Matrix =  World_Generator(World_Size)
+	Actors_Matrix = Actors_Generators()
+	#Assignation des caractéristiques géographiques (cf. const)
+	Fluv_Terr(World_Matrix,Fluv)
+	Coast_Terr(World_Matrix,Coast)
+	Mount_Terr(World_Matrix,Mount)
+	#Assignations des rentes aux territoires (cf. const)
+	for i in 1:World_Size
+		World_Matrix[i].Minerais = Min_Val[i]
+		World_Matrix[i].Blé = Blé_Val[i]
+		World_Matrix[i].Bois = Bois_Val[i]
+		World_Matrix[i].Pierre = Pir_Val[i]
+	end
+	#Assignation d'un certain nombre de ressources à chaque troupe
+	for element in Actors_Matrix
+		element.Bois = Start_Ressources[1]
+		element.Pierre = Start_Ressources[2]
+		element.Blé = Start_Ressources[3]
+		element.Minerais = Start_Ressources[4]
+	end
+	#Assignation du territoire de base de chaque troupe. chaque troupe démarre avec 30 soldats et 1 bateau
+	for i in collect(1:10)
+		Base_Terr = World_Matrix[247-i]
+		Base_Terr.Troupe = Actors_Matrix[i].Nom
+		Base_Terr.Soldats = 30
+		Base_Terr.Bateaux = 1
+	end
+	#Il y a entre 1 et 5 soldats autochtones par territoire au début du jeu
+	for element in World_Matrix[1:236]
+		element.Soldats = round(4*rand(1)[1])+1
+	end
+	return World_Matrix, Actors_Matrix
+end
+
 # ╔═╡ 28d3f46d-3258-4c9b-bffa-13d9f464cbd5
 md"##### 3.3. Création d'une situation de jeu fictive"
 
 # ╔═╡ abd800af-4f8f-48bb-9588-f43c75957605
 """
-		Temporary_WorldFiller(World_Matrix)
+		Temporary_WorldFiller(World_Matrix,Actors_Matrix)
 
 	Cette fonction prend en argument le vecteur contenant tous els territoires du monde et permet de et rempli chaque territoire avec certaines caractéristiques aléatoires pour simuler une situation de jeu en pleine partie. 
 
@@ -278,6 +337,7 @@ function Assign_MilQties(World_Matrix,Actors_Matrix,Troupe::String)
 	Trr_Count = 0
 	Sld_Count = 0
 	Bot_Count = 0
+	Civ_Count = 0
 	Min_Count = 0
 	Blé_Count = 0
 	Wod_Count = 0
@@ -427,19 +487,36 @@ function Add_Entity(World_Matrix,Actors_Matrix,Terr::Territoire, Entity::String)
 	Cost = [0 0 0 0]
 	if Entity == "Ferme"
 		if Terr.Ferme == false
-			Cost = Cas_Cost
+			Cost = Farm_Cost
 			Terr.Ferme = true
+			pr = "Achat effectué : Les $Actor ont construit une ferme sur le territoire n°$ID."
 		elseif Terr.Ferme == true
 			pr = "Achat non effectué : Le territoire contient déjà une ferme."
 			pr = "Achat effectué : Les $Actor ont construit une ferme sur le territoire n°$ID."
 		end
-	elseif Entity == "Caserne"
-		if Terr.Caserne == false
-			Cost = Cas_Cost
-			Terr.Caserne = true
-			pr = "Achat effectué : Les $Actor ont construit une caserne sur le territoire n°$ID."
-		elseif Terr.Caserne == true
-			pr = "Achat non effectué : Le territoire contient déjà une caserne."
+	elseif Entity == "Scierie"
+		if Terr.Scierie == false
+			Cost = Saw_Cost
+			Terr.Scierie = true
+			pr = "Achat effectué : Les $Actor ont construit une scierie sur le territoire n°$ID."
+		elseif Terr.Scierie == true
+			pr = "Achat non effectué : Le territoire contient déjà une sciereie."
+		end
+	elseif Entity == "Carrière"
+		if Terr.Carrière == false
+			Cost = Carr_Cost
+			Terr.Carrière = true
+			pr = "Achat effectué : Les $Actor ont construit une carrière sur le territoire n°$ID."
+		elseif Terr.Carrière == true
+			pr = "Achat non effectué : Le territoire contient déjà une carrière."
+		end
+	elseif Entity == "Mine"
+		if Terr.Mine == false
+			Cost = Mine_Cost
+			Terr.Mine = true
+			pr = "Achat effectué : Les $Actor ont construit une mine sur le territoire n°$ID."
+		elseif Terr.Mine == true
+			pr = "Achat non effectué : Le territoire contient déjà une mine."
 		end
 	elseif Entity == "Port"
 		if Terr.Port == false
@@ -604,13 +681,29 @@ function New_Turn(World_Matrix,Actors_Matrix)
 		for i = 1:size(Prop)[1]
 			CaseID = Prop[i]
 			Terr = World_Matrix[CaseID]
-			Trp.Bois += Terr.Bois
-			Trp.Pierre += Terr.Pierre
-			Trp.Blé += Terr.Blé
-			Trp.Minerais += Terr.Minerais
+			if Terr.Ferme == true
+				Trp.Blé += 2*Terr.Blé
+			else
+				Trp.Blé += Terr.Blé
+			end
+			if Terr.Scierie == true
+				Trp.Bois += 2*Terr.Bois
+			else
+				Trp.Bois += Terr.Bois
+			end
+			if Terr.Carrière == true
+				Trp.Pierre += 2*Terr.Pierre
+			else
+				Trp.Pierre += Terr.Pierre
+			end
+			if Terr.Mine == true
+				Trp.Minerais += 2*Terr.Minerais
+			else
+				Trp.Minerais += Terr.Minerais
+			end
 		end
 		Sold_Nbr = Trp.Soldats
-		Army_Cost = Sold_Nbr*Sal_Sold
+		Army_Cost = Sold_Nbr*SoldEntr_Cost[3]
 		if Trp.Blé >= Army_Cost
 			Trp.Blé = Trp.Blé-Army_Cost
 		else
@@ -627,6 +720,57 @@ function New_Turn(World_Matrix,Actors_Matrix)
 end
 #Note : Prévoir une fonciton qui fait l'inverse en cas d'erreur de manip ? 
 #Note : Il ne se passe rien si la troupe passe en négatif à cause des soldats...
+
+# ╔═╡ 3d3cc7ed-cf7a-4b4f-98e9-95359ad21cef
+"""
+			Assault(World_Matrix,Att_Terr_Int::Int, Def_Terr_Int::Int)
+	Cette fonction sert à effectuer une attaque. Elle prend 3 arguments : 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le numéro d'identité du territoire attaquant ;
+	- Le numéro d'identité du territoire attaqué ;
+	Elle retourne une phrase qui résume se qui s'est passé durant l'attaque. En parallèle, elle effectue toutes les modifications nécessaires dans le jeu.
+	"""
+function Assault(World_Matrix,Att_Terr_Int::Int, Def_Terr_Int::Int)
+	Att_Terr = Find_Terr(Att_Terr_Int,World_Matrix)
+	Def_Terr = Find_Terr(Def_Terr_Int,World_Matrix)
+	Att_nbr = Int(Att_Terr.Soldats)
+	Def_nbr = Int(Def_Terr.Soldats)
+	Att_Trp = Att_Terr.Troupe
+	Def_Trp = Def_Terr.Troupe
+    # Vérifier si les nombres de troupes sont valides
+    if Att_nbr < 2 || Def_nbr < 1
+        pr = "Erreur : L'attaquant doit attaquer avec au moins 2 soldats un territoire qui contient au moins 1 soldat."
+	else
+	    Att_nbr_rest = Att_nbr
+	    Def_nbr_rest = Def_nbr
+	    while Att_nbr_rest > 1 && Def_nbr_rest > 0
+	        Att_dices = min(Att_nbr_rest - 1, 3)
+	        Def_dices = min(Def_nbr_rest, 2)
+	        Res_Att = sort(rand(1:6, Att_dices), rev=true)
+	        Res_Def = sort(rand(1:6, Def_dices), rev=true)
+	        for (attaque, defense) in zip(Res_Att, Res_Def)
+	            if attaque > defense
+	                Def_nbr_rest -= 1
+	            else
+	                Att_nbr_rest -= 1
+	            end
+	        end
+	    end
+		if Att_nbr_rest == 1 #Si la défense gagne
+			Att_Terr.Soldats = 1
+			Def_Terr.Soldats = Def_nbr_rest
+			pr = "L'attaque a échoué : Les $Def_Trp ont réussi à défendre leur territoire! Il leur reste $Def_nbr_rest soldats sur leur territoire. Toutes les troupes des $Att_Trp sont tombées au combat... Seul 1 soldat reste sur le territoire $Att_Terr_Int."
+		elseif Def_nbr_rest == 0 #Si l'attaque gagne
+			Att_Terr.Soldats = 1
+			Def_Terr.Troupe = Att_Trp
+	    	Def_Terr.Soldats = Att_nbr_rest-1
+			pr = "L'attaque est un succès : Les $Att_Trp ont vaincu la défense des $Def_Trp, qui ont perdu toutes leurs troupes au combat ! Les $Att_Trp occupent donc maintenant le territoire numéro $Def_Terr_Int avec $(Att_nbr_rest-1) soldats. 1 soldat est resté défendre le territoire $Att_Terr_Int."
+		else
+			println("Erreur 404")
+		end
+	end
+	return pr
+end
 
 # ╔═╡ d45625d4-9e8f-4724-941e-e9b514a27651
 md"### 6. Fonctions d'affichage
@@ -645,6 +789,7 @@ Les fonctions décrites dans cette section permettent de rendre **facilement** v
 function Terr_Info(World_Matrix,Territoire::Int)
 	Terr =  World_Matrix[Territoire]
 	Propriétaire = uppercase(Terr.Troupe)
+	Type = Terr.Type
 	Soldats = Terr.Soldats
 	Bateaux = Terr.Bateaux
 	Minerais = round(Terr.Minerais)
@@ -652,17 +797,29 @@ function Terr_Info(World_Matrix,Territoire::Int)
 	Bois = round(Terr.Bois)
 	Pierre = round(Terr.Pierre)
 	Ferme = "Non"
-	Caserne = "Non"
+	Scierie = "Non"
+	Carrière = "Non"
+	Mine = "Non"
 	Port = "Non"
 	if Terr.Ferme == true
 		Ferme = "Oui"
 	else
 		Ferme = "Non"
 	end
-	if Terr.Caserne == true
-		Caserne = "Oui"
+	if Terr.Scierie == true
+		Scierie = "Oui"
 	else
-		Caserne = "Non"
+		Scierie = "Non"
+	end
+	if Terr.Carrière == true
+		Carrière = "Oui"
+	else
+		Carrière = "Non"
+	end
+	if Terr.Mine == true
+		Mine = "Oui"
+	else
+		Mine = "Non"
 	end
 	if Terr.Port == true
 		Port = "Oui"
@@ -677,12 +834,21 @@ function Terr_Info(World_Matrix,Territoire::Int)
 	pr7 = "Richesse en Blé : $Blé"
 	pr8 = "Richesse en Bois : $Bois"
 	pr9 = "Richesse en Pierre : $Pierre"
-	pr10 = "Présence d'une Ferme : $Ferme"
-	pr11 = "Présence d'une Caserne : $Caserne"
-	pr12 = "Présence d'un port : $Port"
-	pr_elem = [pr2, pr3, pr4, pr5, pr6, pr7, pr8, pr9, pr10, pr11, pr12]
+	pr10 = "Présence d'une ferme : $Ferme"
+	pr11 = "Présence d'une scierie : $Scierie"
+	pr12 = "Présence d'une carrière : $Carrière"
+	pr13 = "Présence d'une mine : $Mine"
+	pr14 = "Présence d'un port : $Port"
+	pr15 = "Taille du territoire : $Type"
+	pr_elem = [pr2, pr3, pr15, pr4, pr5, pr6, pr7, pr8, pr9, pr10, pr11, pr12, pr13, pr14]
 	return pr_elem
 end
+
+# ╔═╡ 7944dc39-3a02-4237-9833-54b5865c0e19
+W,A = Start_Game()
+
+# ╔═╡ b0b8944f-fa64-4cef-ad60-81b9371f38bb
+Terr_Info(W,12)
 
 # ╔═╡ ac9c1cb6-78ad-4387-83c5-c83522f5bb6d
 """
@@ -704,6 +870,7 @@ function Properties_Info(World_Matrix,Actors_Matrix,Troupe::String,field::String
 		Structure = Find_Terr(element,World_Matrix)
 		Dico = Dict([
 		    ("caseid", Structure.CaseID),
+			("type",Structure.Type),
 		    ("troupe", Structure.Troupe),
 		    ("soldats", Structure.Soldats),
 		    ("bateaux", Structure.Bateaux),
@@ -712,7 +879,9 @@ function Properties_Info(World_Matrix,Actors_Matrix,Troupe::String,field::String
 		    ("bois", Structure.Bois),
 		    ("pierre", Structure.Pierre),
 		    ("ferme", Structure.Ferme),
-		    ("caserne", Structure.Caserne),
+		    ("scierie", Structure.Scierie),
+			("carrière", Structure.Carrière),
+			("mine", Structure.Mine),
 		    ("port", Structure.Port),
 		    ("isfluvial", Structure.IsFluvial),
 		    ("iscoast", Structure.IsCoast),
@@ -734,14 +903,11 @@ md"### 7. Fonctions \"`Execute()`\""
 
 # ╔═╡ 79b63986-ce3a-451e-be10-4bb90f76f93a
 md"### Notes Réunion 24 Mar 24
-- Créer fonction start_game : assigne un certian nombre de richesses (+ matériel ?) à chaque troupe à chaque troupe
-- Fonction pour jouer une attaque ? Via le code ou à côté ? 
-- Fonction pour les catastrophes naturelles
-- Attribuer les caractéristique sà tous les territoires
+- Fonction pour les catastrophes naturelles : to do
 - Imprimer une feuille avec leur situation complète quels territoires ils ont + tableau
-- Carte espion
-- Sauvegarde de la matrice à chaque tour .txt ou .xslx
-- Garde royale"
+- Carte espion : en réel
+- Sauvegarde de la matrice à chaque tour .txt ou .xslx : to do
+- Garde royale : to do"
 
 # ╔═╡ 018f1d80-9fbc-4d36-a41e-319c86511b76
 md"## PARTIE B - INTERFACE DE JEU"
@@ -755,151 +921,14 @@ begin
 	nothing
 end
 
-# ╔═╡ 91a757ac-e56c-4228-8cff-fbd25fa27714
-md"""### ACTIONS
-
-Sélectionnez ici l'action que le joueur souhaite exécuter : 
-
- $(@bind Turn CheckBox()) Début d'un tour\
- $(@bind Transfer CheckBox()) Transférer les troupes d'un territoire vers un autre\
- $(@bind Buy CheckBox()) Acheter un bâtiment et le placer sur un de ses territoire\
- $(@bind Salt CheckBox()) Acheter du sel avec des ressources\
-"""
-
-# ╔═╡ 55be7c75-ee34-4a2e-b02d-b69402f82672
-if Buy == true
-	@bind Adding_Data PlutoUI.confirm(
-		PlutoUI.combine() do Child
-			@htl("""
-			<h3>Achat d'un nouveau bâtiment</h3>
-			
-			<ul>
-			$([
-				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
-				for name in ["Numéro d'identité du territoire concerné ", "Bâtiment que la troupe souhaite ajouter "]
-			])
-			</ul>
-			""")
-		end
-	)
-elseif Turn == true
-	md"""Veuillez, par sécurité, écrire : "`Je confirme qu'un nouveau tour doit avoir lieu`" : $@bind Mess_Turn PlutoUI.confirm(html"<input type=text>")"""
-elseif Transfer == true
-	@bind Transfer_Data PlutoUI.confirm(
-		PlutoUI.combine() do Child
-			@htl("""
-			<h3>Transfert de troupe(s)</h3>
-			
-			<ul>
-			$([
-				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
-				for name in ["Numéro du territoire de départ ", "Numéro du territoire de destination ", "Nombre de troupes à transférer "]
-			])
-			</ul>
-			""")
-		end
-	)
-elseif Salt == true
-	@bind Salt_Data PlutoUI.confirm(
-		PlutoUI.combine() do Child
-			@htl("""
-			<h3>Conversion de ressource(s) en sel</h3>
-			
-			<ul>
-			$([
-				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
-				for name in ["Troupe qui souhaite effectuer l'échange ","Type de ressource qu'on souhaite convertir en sel ", "Quantité de ressource que à échanger "]
-			])
-			</ul>
-			""")
-		end
-	)
-end
-
-# ╔═╡ 3b763c2f-83d8-4be6-9fb5-e6ce1881db52
-function Execute_Buy()
-	try
-		Entity_Type = Adding_Data[2]
-		Terr_Int = parse(Int64,Adding_Data[1])
-		Terr_Strct = Find_Terr(Terr_Int,World)
-		Trp = Terr_Strct.Troupe
-		pr = Add_Entity(World, Troupes,Terr_Strct,Entity_Type)
-		println(pr)
-	catch
-		with_terminal() do
-			println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer votre achat")
-		end
-	end
-end
-
-# ╔═╡ 1e15b72a-b0be-4045-961b-5e8de4cc9b4f
-function Execute_Transfer()
-	try
-		Nbr = parse(Int64,Transfer_Data[3])
-		Dep_Terr = parse(Int64,Transfer_Data[1])
-		Dep_Terr_Strct = Find_Terr(Dep_Terr,World)
-		Arr_Terr = parse(Int64,Transfer_Data[2])
-		Arr_Terr_Strct = Find_Terr(Arr_Terr,World)
-		Trp = Arr_Terr_Strct.Troupe
-		pr = Transfer_Troups(World,Dep_Terr_Strct,Arr_Terr_Strct,Nbr)
-		println(pr)
-	catch
-		with_terminal() do
-			println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer votre transfert")
-		end
-	end
-end
-
-# ╔═╡ a1b4005e-6e10-45ee-b018-6ff5c0a1a4a9
-function Execute_NewTurn()
-	try
-		if lowercase(Mess_Turn) == "je confirme qu'un nouveau tour doit avoir lieu"
-			New_Turn(World,Troupes)
-			pr = "Un nouveau tour a bien été effectué"
-		elseif Mess_Turn ≠ ""
-			pr = "Le message est mal écrit, veuillez recommencer"
-		end
-		println(pr)
-	catch
-		pr = "Veuillez écrire et envoyer le message suivant les instructions ci-dessus"
-		println(pr)
-	end
-end
-
-# ╔═╡ 8bb403e2-83e7-49b7-8c3c-b0d6c97f4aed
-function Execute_Ressource2Salt()
-	try
-		Trp = Salt_Data[1]
-		Qty = parse(Int64,Salt_Data[3])
-		Ressource = Salt_Data[2]
-		pr = Ressource2Salt(Troupes,Trp,Ressource,Qty)
-		println(pr)
-	catch
-		pr = "Veuillez remplir les cases puis cliquer sur envoyer pour confirmer l'échange"
-		println(pr)
-	end
-end
-
-# ╔═╡ 3daf9148-39d2-493c-96be-307d1e402436
-if Buy == true
-	Execute_Buy()
-elseif Turn == true
-	Execute_NewTurn()
-elseif Transfer == true
-	Execute_Transfer()
-elseif Salt == true
-	Execute_Ressource2Salt()
-end
-
 # ╔═╡ a0406049-10c0-4b93-9f0e-ac7eebe6d979
 md"""### AFFICHAGE
+	Sélectionnez ici ce que vous souhaitez afficher :
 
-Sélectionnez ici ce que vous souhaitez afficher :
-
- $(@bind SitGen CheckBox()) Situation des troupes\
- $(@bind PropTerr CheckBox()) Caractéristiques d'un territoire\
- $(@bind PropTrp CheckBox()) Propriétés d'une troupe\
-"""
+	 $(@bind SitGen CheckBox()) Situation des troupes\
+	 $(@bind PropTerr CheckBox()) Caractéristiques d'un territoire\
+	 $(@bind PropTrp CheckBox()) Propriétés d'une troupe\
+	"""
 
 # ╔═╡ 400579f3-b212-4902-b96e-8659c33245da
 if PropTerr == true
@@ -907,7 +936,7 @@ if PropTerr == true
 elseif PropTrp == true
 	sp = html"&nbsp"
 	md""" **Cochez les informations que vous voulez voir apparaître** :\
-	$sp $(@bind cad CheckBox()) CaseID $sp $sp $sp $sp $(@bind tre CheckBox()) Troupe $sp $sp $sp $sp $(@bind bax CheckBox()) Bâteaux $sp $sp $sp $sp $(@bind mis CheckBox()) Minerais $sp $sp $sp $sp $(@bind ble CheckBox()) Blé $sp $sp $sp $sp $(@bind bos CheckBox()) Bois $sp $sp $sp $sp $(@bind pie CheckBox()) Pierre $sp $sp $(@bind fee CheckBox()) Ferme $sp $sp $sp $sp $sp $(@bind cae CheckBox()) Caserne $sp $sp $sp $(@bind pot CheckBox()) Port $sp $sp $sp $sp $sp $sp $sp $(@bind fll CheckBox()) Fluvial $sp $sp $sp $sp $sp $sp $(@bind cor CheckBox()) Côtier $sp $sp $(@bind mos CheckBox()) Mountains
+	 $(@bind cad CheckBox()) CaseID $sp $sp $sp $sp $(@bind tye CheckBox()) Type $sp $sp $sp $sp $(@bind sdt CheckBox()) Soldats $sp $sp $sp $sp $(@bind bax CheckBox()) Bâteaux $sp $sp $sp $sp $(@bind mis CheckBox()) Minerais $sp $sp $sp $sp $(@bind ble CheckBox()) Blé $sp $sp $sp $sp $(@bind bos CheckBox()) Bois $sp $sp $sp $(@bind pie CheckBox()) Pierre $sp $sp $sp $sp $sp $(@bind fee CheckBox()) Ferme $sp $sp $sp $(@bind sce CheckBox()) Scierie $sp $sp $sp $sp $(@bind cae CheckBox()) Carrière $sp $sp $sp $sp $(@bind mie CheckBox()) Mine $sp $sp $sp $sp $sp $sp $sp $(@bind pot CheckBox()) Port $sp $sp $sp $(@bind fll CheckBox()) Fluvial $(@bind cor CheckBox()) Côtier $sp $sp $sp $sp $sp $(@bind mos CheckBox()) Mountains
 	
 	**Nom de la troupe concernée** : $@bind Ttp PlutoUI.confirm(html"<input type=text>")"""
 end
@@ -925,8 +954,8 @@ end
 	"""
 function Advanced_Properties_Info(World_Matrix,Actors_Matrix,Troupe::String)
 	Asked_Elements = Dict()
-	button_labels = [cad, tre, bax, mis, ble, bos, pie, fee, cae, pot, fll, cor, mos]
-	button_names = ["CaseID", "Troupe", "Bateaux", "Minerais", "Blé", "Bois", "Pierre", "Ferme", "Caserne", "Port", "IsFluvial", "IsCoast", "IsMountains"]
+	button_labels = [cad, tye, sdt, bax, mis, ble, bos, pie, fee, sce, cae, mie, pot, fll, cor, mos]
+	button_names = ["CaseID", "Type", "Soldats", "Bateaux", "Minerais", "Blé", "Bois", "Pierre", "Ferme", "Scierie", "Carrière", "Mine", "Port", "IsFluvial", "IsCoast", "IsMountains"]
 	buttons_dict = Dict(zip(button_names, button_labels))
 	for element in button_names
 		if buttons_dict[element] == true
@@ -1013,6 +1042,210 @@ elseif PropTrp == true
 	Execute_Display_Properties_Info()
 end
 
+# ╔═╡ 91a757ac-e56c-4228-8cff-fbd25fa27714
+md"""### ACTIONS
+
+Sélectionnez ici l'action que le joueur souhaite exécuter : 
+
+ $(@bind Turn CheckBox()) Début d'un tour\
+ $(@bind Transfer CheckBox()) Transférer les troupes d'un territoire vers un autre\
+ $(@bind Buy CheckBox()) Acheter un bâtiment et le placer sur un de ses territoire\
+ $(@bind Salt CheckBox()) Acheter du sel avec des ressources\
+ $(@bind Ass CheckBox()) Attaquer un territoire\
+"""
+
+# ╔═╡ 34d229fe-06af-4179-b44a-5c1208f86ff0
+begin
+	if Ass == true
+	md"""### Préparez votre attaque méticuleusement !!
+	Observez les caractéristiques des territoires que vous souhaitez impliquer dans l'attaque en remplissant les cases ci-dessus ! Ceci vosu permettra de prendre une meilleure décision !
+	
+	ID du territoire d'où part l'attaque : $(@bind AttStg html"<input type=text>")\
+	ID du territoire attaqué : $(@bind DefStg html"<input type=text>")
+	"""
+	end
+end
+
+# ╔═╡ 3f554a7d-8d0c-4258-ab9e-2a88d41fdda1
+function Execute_Display_TerrAttInfo()
+	if Ass == true
+		try
+			Att_It = parse(Int64,AttStg)
+			Def_It = parse(Int64,DefStg)
+			Att_Info = Terr_Info(World,Att_It)
+			Def_Info = Terr_Info(World,Def_It)
+			with_terminal() do
+				for i in 1:length(Att_Info)
+					@printf("%-45s %-25s\n",Att_Info[i],Def_Info[i])
+				end
+			end
+		catch
+			pr = "Veuillez remplir les cases puis cliquer sur envoyer pour confirmer l'attaque."
+			println(pr)
+		end
+	else
+		return nothing
+	end
+end
+
+# ╔═╡ e21132a8-c795-416d-90c1-d1817337af89
+Execute_Display_TerrAttInfo()
+
+# ╔═╡ 55be7c75-ee34-4a2e-b02d-b69402f82672
+if Buy == true
+	@bind Adding_Data PlutoUI.confirm(
+		PlutoUI.combine() do Child
+			@htl("""
+			<h3>Achat d'un nouveau bâtiment</h3>
+			
+			<ul>
+			$([
+				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+				for name in ["Numéro d'identité du territoire concerné ", "Bâtiment que la troupe souhaite ajouter "]
+			])
+			</ul>
+			""")
+		end
+	)
+elseif Turn == true
+	md"""Veuillez, par sécurité, écrire : "`Je confirme qu'un nouveau tour doit avoir lieu`" : $@bind Mess_Turn PlutoUI.confirm(html"<input type=text>")"""
+elseif Transfer == true
+	@bind Transfer_Data PlutoUI.confirm(
+		PlutoUI.combine() do Child
+			@htl("""
+			<h3>Transfert de troupe(s)</h3>
+			
+			<ul>
+			$([
+				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+				for name in ["Numéro du territoire de départ ", "Numéro du territoire de destination ", "Nombre de troupes à transférer "]
+			])
+			</ul>
+			""")
+		end
+	)
+elseif Salt == true
+	@bind Salt_Data PlutoUI.confirm(
+		PlutoUI.combine() do Child
+			@htl("""
+			<h3>Conversion de ressource(s) en sel</h3>
+			
+			<ul>
+			$([
+				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+				for name in ["Troupe qui souhaite effectuer l'échange ","Type de ressource qu'on souhaite convertir en sel ", "Quantité de ressource que à échanger "]
+			])
+			</ul>
+			""")
+		end
+	)
+elseif Ass == true
+	@bind Ass_Data PlutoUI.confirm(
+		PlutoUI.combine() do Child
+			@htl("""
+			<h3>Sûr de votre coup ? Attaquez !</h3>
+			
+			<ul>
+			$([
+				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+				for name in ["ID du territoire d'où part l'attaque ","ID du territoire attaqué"]
+			])
+			</ul>
+			""")
+		end
+	)
+end
+
+# ╔═╡ 3b763c2f-83d8-4be6-9fb5-e6ce1881db52
+function Execute_Buy()
+	try
+		Entity_Type = Adding_Data[2]
+		Terr_Int = parse(Int64,Adding_Data[1])
+		Terr_Strct = Find_Terr(Terr_Int,World)
+		Trp = Terr_Strct.Troupe
+		pr = Add_Entity(World, Troupes,Terr_Strct,Entity_Type)
+		println(pr)
+	catch
+		with_terminal() do
+			println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer votre achat")
+		end
+	end
+end
+
+# ╔═╡ 1e15b72a-b0be-4045-961b-5e8de4cc9b4f
+function Execute_Transfer()
+	try
+		Nbr = parse(Int64,Transfer_Data[3])
+		Dep_Terr = parse(Int64,Transfer_Data[1])
+		Dep_Terr_Strct = Find_Terr(Dep_Terr,World)
+		Arr_Terr = parse(Int64,Transfer_Data[2])
+		Arr_Terr_Strct = Find_Terr(Arr_Terr,World)
+		Trp = Arr_Terr_Strct.Troupe
+		pr = Transfer_Troups(World,Dep_Terr_Strct,Arr_Terr_Strct,Nbr)
+		println(pr)
+	catch
+		with_terminal() do
+			println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer votre transfert")
+		end
+	end
+end
+
+# ╔═╡ a1b4005e-6e10-45ee-b018-6ff5c0a1a4a9
+function Execute_NewTurn()
+	try
+		if lowercase(Mess_Turn) == "je confirme qu'un nouveau tour doit avoir lieu"
+			New_Turn(World,Troupes)
+			pr = "Un nouveau tour a bien été effectué"
+		elseif Mess_Turn ≠ ""
+			pr = "Le message est mal écrit, veuillez recommencer"
+		end
+		println(pr)
+	catch
+		pr = "Veuillez écrire et envoyer le message suivant les instructions ci-dessus"
+		println(pr)
+	end
+end
+
+# ╔═╡ 8bb403e2-83e7-49b7-8c3c-b0d6c97f4aed
+function Execute_Ressource2Salt()
+	try
+		Trp = Salt_Data[1]
+		Qty = parse(Int64,Salt_Data[3])
+		Ressource = Salt_Data[2]
+		pr = Ressource2Salt(Troupes,Trp,Ressource,Qty)
+		println(pr)
+	catch
+		pr = "Veuillez remplir les cases puis cliquer sur envoyer pour confirmer l'échange"
+		println(pr)
+	end
+end
+
+# ╔═╡ ec047408-2525-4947-bc4c-2df0ac126c7e
+function Execute_Assault()
+	try
+		Att_Itgr = parse(Int64,Ass_Data[1])
+		Def_Itgr = parse(Int64,Ass_Data[2])
+		pr = Assault(World,Att_Itgr,Def_Itgr)
+		println(pr)
+	catch
+		pr = "Veuillez remplir les cases puis cliquer sur envoyer pour confirmer l'attaque."
+		println(pr)
+	end
+end
+
+# ╔═╡ 3daf9148-39d2-493c-96be-307d1e402436
+if Buy == true
+	Execute_Buy()
+elseif Turn == true
+	Execute_NewTurn()
+elseif Transfer == true
+	Execute_Transfer()
+elseif Salt == true
+	Execute_Ressource2Salt()
+elseif Ass == true
+	Execute_Assault()
+end
+
 # ╔═╡ Cell order:
 # ╠═c7e31109-3c17-4880-b870-6dd45eb29aa1
 # ╟─b9b43e1a-fac4-403c-9bd7-02e9126f0ca8
@@ -1023,15 +1256,16 @@ end
 # ╟─ba82811c-91b4-4355-97ce-ea731c2000c9
 # ╠═61fbec2c-1003-4ccf-a588-0f5b927226f1
 # ╟─4f4b516e-00c6-4dc3-aee3-7fb8c1a1b8cf
-# ╟─2bebe9c0-b5af-4336-825a-9add6581d21d
+# ╠═2bebe9c0-b5af-4336-825a-9add6581d21d
 # ╟─1d6eba18-9d51-4c96-975d-bdc9c5d2e861
 # ╟─60a165a8-4e65-4948-8fd7-d8c744051037
-# ╟─0b8cd34c-02e7-4559-a687-bc1a8f020ddf
-# ╟─933a08ef-df41-4f9d-b755-2f467dbad556
+# ╠═0b8cd34c-02e7-4559-a687-bc1a8f020ddf
+# ╠═933a08ef-df41-4f9d-b755-2f467dbad556
 # ╟─03951448-2744-4668-a5c0-13a3cb57c8db
 # ╟─2fa4706b-f1ca-4fa0-8568-b0512936d8b2
 # ╟─000d6c33-dc9f-4ddb-8439-20d1a7a98d82
 # ╟─5ebd7c4e-6dba-44dc-b4fe-8fcaf4f5b09c
+# ╠═4e2210be-c52e-42b7-9bd8-3ed46e62a4e3
 # ╟─28d3f46d-3258-4c9b-bffa-13d9f464cbd5
 # ╟─abd800af-4f8f-48bb-9588-f43c75957605
 # ╟─dc8eff81-5e94-4cb2-8e78-b822f307a120
@@ -1047,8 +1281,11 @@ end
 # ╟─6c0a40cd-d316-42bb-955a-00f2afdbefa0
 # ╟─49d6deec-8929-4e17-9ba7-a23cec4de568
 # ╟─554d8c87-8a34-4ca2-98ff-443dc8226381
+# ╟─3d3cc7ed-cf7a-4b4f-98e9-95359ad21cef
 # ╟─d45625d4-9e8f-4724-941e-e9b514a27651
-# ╟─82ce8603-027a-4197-8d9e-d6c471e416ed
+# ╠═82ce8603-027a-4197-8d9e-d6c471e416ed
+# ╠═7944dc39-3a02-4237-9833-54b5865c0e19
+# ╠═b0b8944f-fa64-4cef-ad60-81b9371f38bb
 # ╟─ac9c1cb6-78ad-4387-83c5-c83522f5bb6d
 # ╟─4a58cec4-778c-4594-ae25-2492acddc68b
 # ╟─15ccf590-a109-4e7f-aa5a-b756d6fccbe9
@@ -1059,12 +1296,16 @@ end
 # ╠═a1b4005e-6e10-45ee-b018-6ff5c0a1a4a9
 # ╠═8bb403e2-83e7-49b7-8c3c-b0d6c97f4aed
 # ╠═31f0c518-740d-4d6b-be63-ee953d6f477b
+# ╠═ec047408-2525-4947-bc4c-2df0ac126c7e
+# ╠═3f554a7d-8d0c-4258-ab9e-2a88d41fdda1
 # ╟─79b63986-ce3a-451e-be10-4bb90f76f93a
 # ╟─018f1d80-9fbc-4d36-a41e-319c86511b76
-# ╠═ce6b11f9-8230-4076-8135-12df833d4a82
-# ╟─91a757ac-e56c-4228-8cff-fbd25fa27714
-# ╟─55be7c75-ee34-4a2e-b02d-b69402f82672
-# ╟─3daf9148-39d2-493c-96be-307d1e402436
+# ╟─ce6b11f9-8230-4076-8135-12df833d4a82
 # ╟─a0406049-10c0-4b93-9f0e-ac7eebe6d979
 # ╟─400579f3-b212-4902-b96e-8659c33245da
 # ╟─89a6d635-ff6d-44d3-b2f7-7f64bc12ea47
+# ╟─91a757ac-e56c-4228-8cff-fbd25fa27714
+# ╟─34d229fe-06af-4179-b44a-5c1208f86ff0
+# ╟─e21132a8-c795-416d-90c1-d1817337af89
+# ╟─55be7c75-ee34-4a2e-b02d-b69402f82672
+# ╟─3daf9148-39d2-493c-96be-307d1e402436
