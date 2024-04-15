@@ -249,6 +249,10 @@ function World_Generator(Nbr_Terr)
 end
 
 # ╔═╡ 4e2210be-c52e-42b7-9bd8-3ed46e62a4e3
+"""
+		Start_Game()
+	Cette fonction sert à démarrer le jeu. Elle ne prend pas d'arguments, et retourne la matrice du monde et des joueurs telle qu'elle doit être en début de partie
+	"""
 function Start_Game()
 	World_Matrix =  World_Generator(World_Size)
 	Actors_Matrix = Actors_Generators()
@@ -262,6 +266,7 @@ function Start_Game()
 		World_Matrix[i].Blé = Blé_Val[i]
 		World_Matrix[i].Bois = Bois_Val[i]
 		World_Matrix[i].Pierre = Pir_Val[i]
+		World_Matrix[i].Type = Types_Val[i]
 	end
 	#Assignation d'un certain nombre de ressources à chaque troupe
 	for element in Actors_Matrix
@@ -717,6 +722,11 @@ function New_Turn(World_Matrix,Actors_Matrix)
 			Trp.Blé = 0
 		end
 	end
+	for Terr in World_Matrix
+		if Terr.Type == 0
+			Terr.Soldats += 30
+		end
+	end
 end
 #Note : Prévoir une fonciton qui fait l'inverse en cas d'erreur de manip ? 
 #Note : Il ne se passe rien si la troupe passe en négatif à cause des soldats...
@@ -844,12 +854,6 @@ function Terr_Info(World_Matrix,Territoire::Int)
 	return pr_elem
 end
 
-# ╔═╡ 7944dc39-3a02-4237-9833-54b5865c0e19
-W,A = Start_Game()
-
-# ╔═╡ b0b8944f-fa64-4cef-ad60-81b9371f38bb
-Terr_Info(W,12)
-
 # ╔═╡ ac9c1cb6-78ad-4387-83c5-c83522f5bb6d
 """
 		Properties_Info(World_Matrix,Actors_Matrix,Troupe::String,field::String)
@@ -895,6 +899,7 @@ function Properties_Info(World_Matrix,Actors_Matrix,Troupe::String,field::String
 		line = Prp[i] => Data[i]
 		push!(DDIICCTT,line)
 	end
+	#dictionnaire_trie = sort(collect(DDIICCTT), by = x -> x[1])
 	return DDIICCTT
 end
 
@@ -907,17 +912,36 @@ md"### Notes Réunion 24 Mar 24
 - Imprimer une feuille avec leur situation complète quels territoires ils ont + tableau
 - Carte espion : en réel
 - Sauvegarde de la matrice à chaque tour .txt ou .xslx : to do
-- Garde royale : to do"
+- Garde royale : to do
+- Influence de la taille
+- 200
+- Premier tour : conquêtes et pas entre nous. Donc premier jour, démogr important
+- Problème fonction affichage multiple : soldats obligatoires
+- Obligation d'attaquer : donc changer le message
+- Adapter le nombre d'autochtones à l'intérêt du territoire : fleuves, côtes
+- Echange de ressources
+- Ajouter ports sur terr de base
+- Noter les pertes (MEE)
+- Augmenter le prix des constructions
+- Capitale autochtones : 1 par cont 17 autochtones, full bâtiments, 
+- Fonction de transfert de ressources (pour payage)
+- Pas de repassage par le centre
+- Bâteaux n'ont pas servi : acheter des bâteaux 
+- Acheter soldats pour tour d'après, spawn au cont de départ
+- fonction de répartition équitable des soldtas sur les territoires
+- Countdown 
+- Usage des ressources : "
 
 # ╔═╡ 018f1d80-9fbc-4d36-a41e-319c86511b76
 md"## PARTIE B - INTERFACE DE JEU"
 
 # ╔═╡ ce6b11f9-8230-4076-8135-12df833d4a82
 begin
-	World = World_Generator(236) #Génère un monde vide
-	Troupes = Actors_Generators() #Génère toutes les troupes
-	Temporary_WorldFiller(World,Troupes) #Simule une simulation de partie en cours
-	Update_LonesSituation(World,Troupes,"NoPrint") #Met à jour les avoirs de toutes les troupes
+	#World = World_Generator(236) #Génère un monde vide
+	#Troupes = Actors_Generators() #Génère toutes les troupes
+	#Temporary_WorldFiller(World,Troupes) #Simule une simulation de partie en cours
+	#Update_LonesSituation(World,Troupes,"NoPrint") #Met à jour les avoirs de toutes les troupes
+	World,Troupes = Start_Game()
 	nothing
 end
 
@@ -979,7 +1003,7 @@ end
 function Display_Properties_Info(World_Matrix,Actors_Matrix,Troupe::String)
 	API = Advanced_Properties_Info(World_Matrix,Actors_Matrix,Troupe::String)
 	Coln_header = []
-	Row_header_info = Properties(World_Matrix,Troupe)
+	Row_header_info = collect(keys(API["Soldats"]))
 	Row_header = []
 	for element in Row_header_info
 		Row_header_elm = "Terr $element"
@@ -1005,7 +1029,7 @@ function Display_Properties_Info(World_Matrix,Actors_Matrix,Troupe::String)
 		println("Territoires possédés : $Row_header_info")
 		println("Informations plus précises :")
 		pretty_table(Table,body_hlines = collect(1:length(Coln_header));header = Row_header)
-	end
+	end 
 end
 
 # ╔═╡ ca705873-8374-4baa-a4c4-65d1ccdb5698
@@ -1259,13 +1283,13 @@ end
 # ╠═2bebe9c0-b5af-4336-825a-9add6581d21d
 # ╟─1d6eba18-9d51-4c96-975d-bdc9c5d2e861
 # ╟─60a165a8-4e65-4948-8fd7-d8c744051037
-# ╠═0b8cd34c-02e7-4559-a687-bc1a8f020ddf
-# ╠═933a08ef-df41-4f9d-b755-2f467dbad556
+# ╟─0b8cd34c-02e7-4559-a687-bc1a8f020ddf
+# ╟─933a08ef-df41-4f9d-b755-2f467dbad556
 # ╟─03951448-2744-4668-a5c0-13a3cb57c8db
 # ╟─2fa4706b-f1ca-4fa0-8568-b0512936d8b2
 # ╟─000d6c33-dc9f-4ddb-8439-20d1a7a98d82
 # ╟─5ebd7c4e-6dba-44dc-b4fe-8fcaf4f5b09c
-# ╠═4e2210be-c52e-42b7-9bd8-3ed46e62a4e3
+# ╟─4e2210be-c52e-42b7-9bd8-3ed46e62a4e3
 # ╟─28d3f46d-3258-4c9b-bffa-13d9f464cbd5
 # ╟─abd800af-4f8f-48bb-9588-f43c75957605
 # ╟─dc8eff81-5e94-4cb2-8e78-b822f307a120
@@ -1280,12 +1304,10 @@ end
 # ╟─3ffe698b-10f7-4164-93f5-d9338775cc74
 # ╟─6c0a40cd-d316-42bb-955a-00f2afdbefa0
 # ╟─49d6deec-8929-4e17-9ba7-a23cec4de568
-# ╟─554d8c87-8a34-4ca2-98ff-443dc8226381
+# ╠═554d8c87-8a34-4ca2-98ff-443dc8226381
 # ╟─3d3cc7ed-cf7a-4b4f-98e9-95359ad21cef
 # ╟─d45625d4-9e8f-4724-941e-e9b514a27651
-# ╠═82ce8603-027a-4197-8d9e-d6c471e416ed
-# ╠═7944dc39-3a02-4237-9833-54b5865c0e19
-# ╠═b0b8944f-fa64-4cef-ad60-81b9371f38bb
+# ╟─82ce8603-027a-4197-8d9e-d6c471e416ed
 # ╟─ac9c1cb6-78ad-4387-83c5-c83522f5bb6d
 # ╟─4a58cec4-778c-4594-ae25-2492acddc68b
 # ╟─15ccf590-a109-4e7f-aa5a-b756d6fccbe9
@@ -1298,7 +1320,7 @@ end
 # ╠═31f0c518-740d-4d6b-be63-ee953d6f477b
 # ╠═ec047408-2525-4947-bc4c-2df0ac126c7e
 # ╠═3f554a7d-8d0c-4258-ab9e-2a88d41fdda1
-# ╟─79b63986-ce3a-451e-be10-4bb90f76f93a
+# ╠═79b63986-ce3a-451e-be10-4bb90f76f93a
 # ╟─018f1d80-9fbc-4d36-a41e-319c86511b76
 # ╟─ce6b11f9-8230-4076-8135-12df833d4a82
 # ╟─a0406049-10c0-4b93-9f0e-ac7eebe6d979
@@ -1307,5 +1329,5 @@ end
 # ╟─91a757ac-e56c-4228-8cff-fbd25fa27714
 # ╟─34d229fe-06af-4179-b44a-5c1208f86ff0
 # ╟─e21132a8-c795-416d-90c1-d1817337af89
-# ╟─55be7c75-ee34-4a2e-b02d-b69402f82672
-# ╟─3daf9148-39d2-493c-96be-307d1e402436
+# ╠═55be7c75-ee34-4a2e-b02d-b69402f82672
+# ╠═3daf9148-39d2-493c-96be-307d1e402436
