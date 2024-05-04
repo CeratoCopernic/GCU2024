@@ -31,6 +31,9 @@ begin
 	#using Observables
 	#using GLMakie
 	using HypertextLiteral
+	using DelimitedFiles #NEW
+	using Dates # NEW
+	TableOfContents()
 end
 
 # ╔═╡ b9b43e1a-fac4-403c-9bd7-02e9126f0ca8
@@ -138,6 +141,7 @@ begin
 	const Troupe_Names = ["Archers", "Hardis", "Paladins","Lanciers","Gueux","Preux","Vaillants","Chevaliers","Templiers","Servants","Autochtones"]
 	const World_Size = 246
 	const Ref_Money = 500
+	const Boat_Capacity = 10
 	const Bois_Val = [10, 10, 10, 10, 10, 10, 20, 20, 10, 10, 10, 20, 20, 10, 10, 10, 20, 20, 20, 10, 10, 10, 10, 20, 10, 10, 10, 10, 20, 10, 10, 0, 0, 0, 10, 10, 10, 20, 20, 10, 10, 20, 10, 10, 20, 20, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 20, 20, 20, 10, 10, 10, 10, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 10, 10, 10, 10, 20, 20, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 70, 70, 70, 70, 70, 70, 60, 60, 70, 70, 70, 70, 70, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 0, 0, 0, 20, 20, 20, 10, 10, 10, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 70, 70, 70, 70, 70, 70, 70, 70, 70, 10, 10, 60, 70, 10, 10, 60, 60, 60, 60, 60, 60, 60, 10, 10, 60, 60, 10, 10, 60, 10, 10, 10, 10, 60, 60, 60, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 	const Min_Val = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 10, 10, 10, 20, 20, 10, 10, 10, 20, 20, 10, 10, 10, 20, 10, 0, 0, 0, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 70, 60, 60, 70, 60, 60, 60, 70, 70, 70, 70, 60, 60, 60, 70, 70, 70, 70, 70, 70, 70, 70, 0, 0, 0, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 20, 20, 20, 20, 20, 20, 10, 10, 10, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 10, 20, 10, 10, 20, 20, 20, 10, 10, 10, 10, 10, 20, 20, 20, 20, 20, 10, 10, 10, 10, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 20, 20, 10, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 10, 10, 10, 10, 20, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 70, 70, 10, 10, 70, 70, 10, 10, 10, 10, 10, 10, 10, 70, 70, 10, 10, 60, 60, 10, 60, 60, 60, 70, 10, 10, 10, 60, 60, 60, 60, 60, 60, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 	const Pir_Val = [70, 70, 70, 70, 70, 70, 60, 60, 70, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 0, 0, 0, 20, 20, 20, 10, 10, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 20, 10, 20, 10, 20, 20, 10, 10, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 10, 10, 10, 10, 10, 20, 20, 20, 20, 10, 10, 10, 10, 20, 20, 20, 20, 20, 20, 10, 10, 20, 0, 0, 0, 60, 60, 60, 70, 70, 70, 60, 60, 60, 70, 70, 60, 60, 70, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 10, 20, 20, 20, 10, 10, 10, 10, 20, 20, 20, 20, 20, 20, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -469,6 +473,76 @@ function Find_Terr(Terr::Int,World_Matrix)
 	return Tr[1]
 end
 
+# ╔═╡ 085d3212-a58f-49e6-925c-2fd134ad8471
+"""
+		Is_SameContinent(World_Matrix,Terr1::Int,Terr2::Int)
+	Cette fonction sert à vérifier si deux territoires appartiennent à un même contienent (sorry, elle est pas super joliment codée, mais elle fonctionne). Elle prend 3 arguments : 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- L'ID du territoire n°1
+	- L'ID du territoire n°2
+	Il renvoie un bool : `true` si les territoires appartiennent au même continent, ou `false` si ce n'est pas le cas.
+	"""
+function Is_SameContinent(World_Matrix,Terr1::Int,Terr2::Int)
+	Iscont = false
+	Cont1 = 0
+	if Terr1 in C1
+		Cont1 = "C1"
+	elseif Terr1 in C2
+		Cont1 = "C2"
+	elseif Terr1 in C3
+		Cont1 = "C3"
+	elseif Terr1 in C4
+		Cont1 = "C4"
+	elseif Terr1 in C5
+		Cont = "C5"
+	elseif Terr1 in C6
+		Cont1 = "C6"
+	elseif Terr1 in C6
+		Cont1 = "C0"
+	elseif Terr1 in I1
+		Cont1 = "I1"
+	elseif Terr1 in I2
+		Cont1 = "I2"
+	elseif Terr1 in I3
+		Cont1 = "I3"
+	elseif Terr1 in I4
+		Cont1 = "I4"
+	elseif Terr1 in I5
+		Cont1 = "I5"
+	end
+		
+	if Terr2 in C1
+		Cont2 = "C1"
+	elseif Terr2 in C2
+		Cont2 = "C2"
+	elseif Terr2 in C3
+		Cont2 = "C3"
+	elseif Terr2 in C4
+		Cont2 = "C4"
+	elseif Terr2 in C5
+		Cont2 = "C5"
+	elseif Terr2 in C6
+		Cont2 = "C6"
+	elseif Terr2 in C6
+		Cont2 = "C0"
+	elseif Terr2 in I1
+		Cont2 = "I1"
+	elseif Terr2 in I2
+		Cont2 = "I2"
+	elseif Terr2 in I3
+		Cont2 = "I3"
+	elseif Terr2 in I4
+		Cont2 = "I4"
+	elseif Terr2 in I5
+		Cont2 = "I5"
+	end
+
+	if Cont1 == Cont2
+		Iscont = true
+	end
+	return Iscont
+end
+
 # ╔═╡ 2194282d-5203-4d1d-965e-b40469064624
 md"### 5. Fonctions de modification du jeu
 Nous avons à présent toutes les fonctions qui permettent de créer le monde et ses joueurs et de collecter un certains nombre de données. Sur base de ces dernières, nous allons maintenant définir les fonctions qui permettent de modifier l'état du jeu en fonction des actions des joueurs."
@@ -558,21 +632,53 @@ Cette sert à transférer des souldats d'un territoire à un autre. Elle prend 4
 - La structure `Territoire` du territoire de départ (où les troupes se situent initialement) ;
 - La structure `Territoire` du territoire de destination (où les troupes désirent être déplacées) ;
 - Le nombre de troupes su'il faudrait déplacer.
-Elle retourne un message qui traduit le statut d'exécution de la fonction. NB : Pour le moment, le programme ne vérifie pas que les territoires sont voisins. 
+Elle retourne un message qui traduit le statut d'exécution de la fonction. Le programme vérifie également que les ports et les bateaux nécessaires ont été construits sur les territoires mentionnés. Si ce n'est pas le cas, elle renvoie un message qui informe le joueur sur la situation. 
 	"""
 function Transfer_Troups(World_Matrix,TerrInit::Territoire,TerrDest::Territoire,Nbr)
 	if TerrInit.Troupe == TerrDest.Troupe
+		IsCont = Is_SameContinent(World_Matrix,TerrInit.CaseID,TerrDest.CaseID)
+		Boats_Init = TerrInit.Bateaux
 		Trp = TerrInit.Troupe
 		Terr_it = TerrInit.CaseID
 		Terr_dt = TerrDest.CaseID
-		if TerrInit.Soldats > Nbr
-			TerrInit.Soldats = TerrInit.Soldats-Nbr
-			TerrDest.Soldats = TerrDest.Soldats+Nbr
-			pr = "Transfert effectué : $Nbr Soldats ont été transférés du territoire n°$Terr_it vers le territoire n°$Terr_dt par les $Trp"
-		elseif TerrInit.Soldats == Nbr
-			pr = "Transfert impossible : vous devez au moins garder un soldat sur le territoire pour pouvoir l'occuper"
+		if IsCont == true
+			if TerrInit.Soldats > Nbr
+				TerrInit.Soldats = TerrInit.Soldats-Nbr
+				TerrDest.Soldats = TerrDest.Soldats+Nbr
+				pr = "Transfert effectué : $Nbr Soldats ont été transférés du territoire n°$Terr_it vers le territoire n°$Terr_dt par les $Trp"
+			elseif TerrInit.Soldats == Nbr
+				pr = "Transfert impossible : vous devez au moins garder un soldat sur le territoire pour pouvoir l'occuper"
+			else
+				pr = "Transfert impossible : vous n'avez pas assez de soldats sur le territoire initial"
+			end
+		elseif IsCont == false && TerrInit.Port == false && TerrDest.Port == false
+			pr = "Transfert intercontinental impossible : Vous n'avez de ports sur aucun des deux territoires ($Terr_it et $Terr_dt)"
+		elseif IsCont == false && TerrInit.Port == false && TerrDest.Port == true
+			pr = "Transfert intercontinental impossible : Vous n'avez pas de port sur le territoire n°$Terr_it."
+		elseif IsCont == false && TerrDest.Port == false && TerrInit.Port == true
+			pr = "Transfert intercontinental impossible : Vous n'avez pas de port sur le territoire n°$Terr_dt."
+		elseif IsCont == false && TerrInit.Port == true && TerrDest.Port == true
+			if Nbr ≤ Boat_Capacity*Boats_Init
+				Used_Boats = ceil(Nbr/Boat_Capacity)
+				if TerrInit.Soldats > Nbr
+					TerrInit.Soldats = TerrInit.Soldats-Nbr
+					TerrDest.Soldats = TerrDest.Soldats+Nbr
+					TerrInit.Bateaux = TerrInit.Bateaux-Used_Boats
+					TerrDest.Bateaux = TerrDest.Bateaux+Used_Boats
+					pr = "Transfert intercontinental effectué : $Nbr Soldats ont été transférés du territoire n°$Terr_it avec $Used_Boats bateau(x) vers le territoire n°$Terr_dt par les $Trp"
+				elseif TerrInit.Soldats == Nbr
+					pr = "Transfert impossible : vous devez au moins garder un soldat sur le territoire pour pouvoir l'occuper"
+				else
+					pr = "Transfert impossible : vous n'avez pas assez de soldats sur le territoire initial"
+				end
+			elseif Boats_Init == 0
+				pr = "Transfert intercontinental impossible : construisez d'abord des bateaux !"
+			elseif Nbr > Boat_Capacity*Boats_Init
+				Tf_max = Boat_Capacity*Boats_Init
+				pr = "Transfert intercontinental impossible : Un bateau ne peut contenir que $Boat_Capacity soldats maximum. Vous essayez de tranférer $Nbr soldats, mais vous ne possédez que de $Boats_Init bateaux... A moins de construire des bateaux supplémentaires, vous ne pouvez tranférer que maximum $Tf_max soldats."
+			end
 		else
-			pr = "Transfert impossible : vous n'avez pas assez de soldats sur le territoire initial"
+			pr = "Other error"
 		end
 	else
 		pr = "Transfert impossible : Vous devez choisir des territoires qui vous appartiennent"
@@ -741,42 +847,143 @@ end
 	Elle retourne une phrase qui résume se qui s'est passé durant l'attaque. En parallèle, elle effectue toutes les modifications nécessaires dans le jeu.
 	"""
 function Assault(World_Matrix,Att_Terr_Int::Int, Def_Terr_Int::Int)
+	IsCont = Is_SameContinent(World_Matrix,Att_Terr_Int,Def_Terr_Int)
 	Att_Terr = Find_Terr(Att_Terr_Int,World_Matrix)
 	Def_Terr = Find_Terr(Def_Terr_Int,World_Matrix)
-	Att_nbr = Int(Att_Terr.Soldats)
-	Def_nbr = Int(Def_Terr.Soldats)
-	Att_Trp = Att_Terr.Troupe
-	Def_Trp = Def_Terr.Troupe
-    # Vérifier si les nombres de troupes sont valides
-    if Att_nbr < 2 || Def_nbr < 1
-        pr = "Erreur : L'attaquant doit attaquer avec au moins 2 soldats un territoire qui contient au moins 1 soldat."
-	else
-	    Att_nbr_rest = Att_nbr
-	    Def_nbr_rest = Def_nbr
-	    while Att_nbr_rest > 1 && Def_nbr_rest > 0
-	        Att_dices = min(Att_nbr_rest - 1, 3)
-	        Def_dices = min(Def_nbr_rest, 2)
-	        Res_Att = sort(rand(1:6, Att_dices), rev=true)
-	        Res_Def = sort(rand(1:6, Def_dices), rev=true)
-	        for (attaque, defense) in zip(Res_Att, Res_Def)
-	            if attaque > defense
-	                Def_nbr_rest -= 1
-	            else
-	                Att_nbr_rest -= 1
-	            end
-	        end
-	    end
-		if Att_nbr_rest == 1 #Si la défense gagne
-			Att_Terr.Soldats = 1
-			Def_Terr.Soldats = Def_nbr_rest
-			pr = "L'attaque a échoué : Les $Def_Trp ont réussi à défendre leur territoire! Il leur reste $Def_nbr_rest soldats sur leur territoire. Toutes les troupes des $Att_Trp sont tombées au combat... Seul 1 soldat reste sur le territoire $Att_Terr_Int."
-		elseif Def_nbr_rest == 0 #Si l'attaque gagne
-			Att_Terr.Soldats = 1
-			Def_Terr.Troupe = Att_Trp
-	    	Def_Terr.Soldats = Att_nbr_rest-1
-			pr = "L'attaque est un succès : Les $Att_Trp ont vaincu la défense des $Def_Trp, qui ont perdu toutes leurs troupes au combat ! Les $Att_Trp occupent donc maintenant le territoire numéro $Def_Terr_Int avec $(Att_nbr_rest-1) soldats. 1 soldat est resté défendre le territoire $Att_Terr_Int."
+	if IsCont == true
+		Att_nbr = Int(Att_Terr.Soldats)
+		#Att_nbr = Int(Att_Terr.Soldats)
+		Def_nbr = Int(Def_Terr.Soldats)
+		Att_Trp = Att_Terr.Troupe
+		Def_Trp = Def_Terr.Troupe
+	    # Vérifier si les nombres de troupes sont valides
+	    if Att_nbr < 2 || Def_nbr < 1
+	        pr = "Erreur : L'attaquant doit attaquer avec au moins 2 soldats un territoire qui contient au moins 1 soldat."
 		else
-			println("Erreur 404")
+		    Att_nbr_rest = Att_nbr
+		    Def_nbr_rest = Def_nbr
+		    while Att_nbr_rest > 1 && Def_nbr_rest > 0
+		        Att_dices = min(Att_nbr_rest - 1, 3)
+		        Def_dices = min(Def_nbr_rest, 2)
+		        Res_Att = sort(rand(1:6, Att_dices), rev=true)
+		        Res_Def = sort(rand(1:6, Def_dices), rev=true)
+		        for (attaque, defense) in zip(Res_Att, Res_Def)
+		            if attaque > defense
+		                Def_nbr_rest -= 1
+		            else
+		                Att_nbr_rest -= 1
+		            end
+		        end
+		    end
+			if Att_nbr_rest == 1 #Si la défense gagne
+				Att_Terr.Soldats = 1
+				Def_Terr.Soldats = Def_nbr_rest
+				pr = "L'attaque a échoué : Les $Def_Trp ont réussi à défendre leur territoire! Il leur reste $Def_nbr_rest soldats sur leur territoire. Toutes les troupes des $Att_Trp sont tombées au combat... Seul 1 soldat reste sur le territoire $Att_Terr_Int."
+			elseif Def_nbr_rest == 0 #Si l'attaque gagne
+				Att_Terr.Soldats = 1
+				Def_Terr.Troupe = Att_Trp
+		    	Def_Terr.Soldats = Att_nbr_rest-1
+				pr = "L'attaque est un succès : Les $Att_Trp ont vaincu la défense des $Def_Trp, qui ont perdu toutes leurs troupes au combat ! Les $Att_Trp occupent donc maintenant le territoire numéro $Def_Terr_Int avec $(Att_nbr_rest-1) soldats. 1 soldat est resté défendre le territoire $Att_Terr_Int."
+			else
+				println("Erreur 404")
+			end
+		end
+	#Si pas même continenet et pas de port
+	elseif IsCont == false && Att_Terr.Port == false
+		pr = "Attaque impossible : vous devez d'abord construire un port sur le territoire d'où part l'attaque si une traversée de la mer est néecessaire"
+	#Si pas même contienent mais port
+	elseif IsCont == false && Att_Terr.Port == true
+		#Si suffisamment de bateaux pour transporter toutes les troupes
+		if Att_Terr.Bateaux ≥ (Att_Terr.Soldats-1)/Boat_Capacity
+			Needed_Boats = ceil((Att_Terr.Soldats-1)/Boat_Capacity)
+			Att_nbr = Int(Att_Terr.Soldats)
+			#Att_nbr = Int(Att_Terr.Soldats)
+			Def_nbr = Int(Def_Terr.Soldats)
+			Att_Trp = Att_Terr.Troupe
+			Def_Trp = Def_Terr.Troupe
+		    # Vérifier si les nombres de troupes sont valides
+		    if Att_nbr < 2 || Def_nbr < 1
+		        pr = "Erreur : L'attaquant doit attaquer avec au moins 2 soldats un territoire qui contient au moins 1 soldat."
+			else
+			    Att_nbr_rest = Att_nbr
+			    Def_nbr_rest = Def_nbr
+			    while Att_nbr_rest > 1 && Def_nbr_rest > 0
+			        Att_dices = min(Att_nbr_rest - 1, 3)
+			        Def_dices = min(Def_nbr_rest, 2)
+			        Res_Att = sort(rand(1:6, Att_dices), rev=true)
+			        Res_Def = sort(rand(1:6, Def_dices), rev=true)
+			        for (attaque, defense) in zip(Res_Att, Res_Def)
+			            if attaque > defense
+			                Def_nbr_rest -= 1
+			            else
+			                Att_nbr_rest -= 1
+			            end
+			        end
+			    end
+				if Att_nbr_rest == 1 #Si la défense gagne
+					Att_Terr.Soldats = 1
+					Def_Terr.Soldats = Def_nbr_rest
+					Def_Terr.Bateaux = Def_Terr.Bateaux + Needed_Boats
+					Att_Terr.Bateaux = Att_Terr.Bateaux - Needed_Boats
+					pr = "L'attaque a échoué : Les $Def_Trp ont réussi à défendre leur territoire! Il leur reste $Def_nbr_rest soldats sur leur territoire. Toutes les troupes des $Att_Trp sont tombées au combat... Seul 1 soldat reste sur le territoire $Att_Terr_Int."
+				elseif Def_nbr_rest == 0 #Si l'attaque gagne
+					Att_Terr.Soldats = 1
+					Def_Terr.Troupe = Att_Trp
+			    	Def_Terr.Soldats = Att_nbr_rest-1
+					Def_Terr.Bateaux = Def_Terr.Bateaux + Needed_Boats
+					Att_Terr.Bateaux = Att_Terr.Bateaux - Needed_Boats
+					pr = "L'attaque est un succès : Les $Att_Trp ont vaincu la défense des $Def_Trp, qui ont perdu toutes leurs troupes au combat ! Les $Att_Trp occupent donc maintenant le territoire numéro $Def_Terr_Int avec $(Att_nbr_rest-1) soldats. 1 soldat est resté défendre le territoire $Att_Terr_Int."
+				else
+					println("Erreur 404")
+				end
+			end
+		#Si pas assez de bâteaux pour transporter toutes les troupes
+		elseif Att_Terr.Bateaux < (Att_Terr.Soldats-1)/Boat_Capacity
+			Def_nbr_left = Att_Terr.Soldats-Int(Att_Terr.Bateaux*Boat_Capacity)
+			Needed_Boats = Att_Terr.Bateaux
+			Att_nbr = Int(Att_Terr.Bateaux*Boat_Capacity)
+			#Att_nbr = Int(Att_Terr.Soldats)
+			Def_nbr = Int(Def_Terr.Soldats)
+			Att_Trp = Att_Terr.Troupe
+			Def_Trp = Def_Terr.Troupe
+		    # Vérifier si les nombres de troupes sont valides
+		    if Att_nbr < 2 || Def_nbr < 1
+		        pr = "Erreur : L'attaquant doit attaquer avec au moins 2 soldats un territoire qui contient au moins 1 soldat."
+			else
+			    Att_nbr_rest = Att_nbr
+			    Def_nbr_rest = Def_nbr
+			    while Att_nbr_rest > 1 && Def_nbr_rest > 0
+			        Att_dices = min(Att_nbr_rest - 1, 3)
+			        Def_dices = min(Def_nbr_rest, 2)
+			        Res_Att = sort(rand(1:6, Att_dices), rev=true)
+			        Res_Def = sort(rand(1:6, Def_dices), rev=true)
+			        for (attaque, defense) in zip(Res_Att, Res_Def)
+			            if attaque > defense
+			                Def_nbr_rest -= 1
+			            else
+			                Att_nbr_rest -= 1
+			            end
+			        end
+			    end
+				if Att_nbr_rest == 1 #Si la défense gagne
+					Def_Terr.Soldats = Def_nbr_rest
+					Def_Terr.Bateaux = Def_Terr.Bateaux + Needed_Boats
+					Att_Terr.Bateaux = Att_Terr.Bateaux - Needed_Boats
+					Att_Terr.Soldats = Def_nbr_left
+					pr = "L'attaque a échoué : Les $Def_Trp ont réussi à défendre leur territoire! Il leur reste $Def_nbr_rest soldats sur leur territoire. Toutes les troupes des $Att_Trp sont tombées au combat... Seuls $Def_nbr_left soldats restent sur le territoire $Att_Terr_Int (manque de bâteaux)."
+				elseif Def_nbr_rest == 0 #Si l'attaque gagne
+					Att_Terr.Soldats = 1
+					Def_Terr.Troupe = Att_Trp
+			    	Def_Terr.Soldats = Att_nbr_rest-1
+					Def_Terr.Bateaux = Def_Terr.Bateaux + Needed_Boats
+					Att_Terr.Bateaux = Att_Terr.Bateaux - Needed_Boats
+					Att_Terr.Soldats = Def_nbr_left
+					pr = "L'attaque est un succès : Les $Att_Trp ont vaincu la défense des $Def_Trp, qui ont perdu toutes leurs troupes au combat ! Les $Att_Trp occupent donc maintenant le territoire numéro $Def_Terr_Int avec $(Att_nbr_rest-1) soldats. $Def_nbr_left soldats sont restés défendre le territoire $Att_Terr_Int (manque de bateaux)."
+				else
+					pr = "Erreur 404"
+				end
+			end
+		else pr = "Erreur : Compris qu'il y a port, mais pas trouvé de sous-conndition..."
 		end
 	end
 	return pr
@@ -903,21 +1110,23 @@ function Properties_Info(World_Matrix,Actors_Matrix,Troupe::String,field::String
 	return DDIICCTT
 end
 
+# ╔═╡ f5019805-05db-4c60-b87b-de6f39ac5556
+md"""
+### 7. Fonctions de sauvegarde
+"""
+
 # ╔═╡ 2e77c3fc-94bd-4dfe-a8b9-4302db6b85fb
-md"### 7. Fonctions \"`Execute()`\""
+md"### 8. Fonctions \"`Execute()`\""
 
 # ╔═╡ 79b63986-ce3a-451e-be10-4bb90f76f93a
 md"### Notes Réunion 24 Mar 24
 - Fonction pour les catastrophes naturelles : to do
-- Imprimer une feuille avec leur situation complète quels territoires ils ont + tableau
 - Carte espion : en réel
 - Sauvegarde de la matrice à chaque tour .txt ou .xslx : to do
 - Garde royale : to do
 - Influence de la taille
-- 200
 - Premier tour : conquêtes et pas entre nous. Donc premier jour, démogr important
 - Problème fonction affichage multiple : soldats obligatoires
-- Obligation d'attaquer : donc changer le message
 - Adapter le nombre d'autochtones à l'intérêt du territoire : fleuves, côtes
 - Echange de ressources
 - Ajouter ports sur terr de base
@@ -932,17 +1141,90 @@ md"### Notes Réunion 24 Mar 24
 - Countdown 
 - Usage des ressources : "
 
+# ╔═╡ 2d89b205-72d1-4a87-8d1a-1f5ad74704bf
+md""" ### Mises à jour
+- Intégration de l'importance des ports et du nombre de bâteaux pour les voyages intercontinentaux (fonctions `Assault` et `Transfer_Troups`)
+- Changement du message d'attaque
+- Créations de fiches de situation pour les troupes
+- Etant donné les gains des ressources à chaque tour lors de l'expérience de jeu précédente, il m'a semblé que 100 était un coefficient suffisamment grand pour les ressources (200 c'est trop)
+"""
+
 # ╔═╡ 018f1d80-9fbc-4d36-a41e-319c86511b76
 md"## PARTIE B - INTERFACE DE JEU"
 
 # ╔═╡ ce6b11f9-8230-4076-8135-12df833d4a82
 begin
-	#World = World_Generator(236) #Génère un monde vide
-	#Troupes = Actors_Generators() #Génère toutes les troupes
-	#Temporary_WorldFiller(World,Troupes) #Simule une simulation de partie en cours
-	#Update_LonesSituation(World,Troupes,"NoPrint") #Met à jour les avoirs de toutes les troupes
-	World,Troupes = Start_Game()
+	World = World_Generator(236) #Génère un monde vide
+	Troupes = Actors_Generators() #Génère toutes les troupes
+	Temporary_WorldFiller(World,Troupes) #Simule une simulation de partie en cours
+	Update_LonesSituation(World,Troupes,"NoPrint") #Met à jour les avoirs de toutes les troupes
+	#World,Troupes = Start_Game()
 	nothing
+end
+
+# ╔═╡ 166ba06c-8fda-44a1-8d83-2c8bd90e3433
+"""
+			Save_Trp_Info(World_Matrix,Actors_Matrix,Trp::String)
+	Cette focntion sert à sauvegarder les informations d'une troupe après un tour. Elle prend 3 arguments :  
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs ;
+	- Le nom de la troupe dont on souhaite traiter les informations ; 
+	Elle crée un fichier `.txt` qu'elle stocke dans le dossier `Messages` du dossier du `Jeu Permanent` sur l'ordinateur. Attention : l'utilisateur du code doit donc avoir créé un tel dossier sur son ordinateur (ou modifier le chemin à sa guise pour que ça fonctionne comme il le souhaite). 
+		"""
+function Save_Trp_Info(World_Matrix,Actors_Matrix,Trp::String)
+	TRP = uppercase(Trp)
+	Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+	Prp = Properties(World_Matrix,Trp)
+	LonesInfo = Update_LonesSituation(World_Matrix,Actors_Matrix,"NoPrint")
+	date_du_jour = Dates.today()
+	date_formattee = Dates.format(date_du_jour, "dd-mm-yyyy")
+	#WRITING FILE
+	chem = "./Messages/Situation_$Trp.txt"
+	fichier = open(chem,"w")
+	write(fichier,"JEU PERMANENT GCU 2024\nFICHE RÉCAPITULATIVE - $TRP\nMise à jour du $date_formattee","\n\n")
+	#Gen info
+	write(fichier,"1. INFORMATIONS GENERALES :\n\n")
+	write(fichier, "Territoires possédés :\n")
+	write(fichier,"- Nombre : $(Trp_Strct.Territoires)\n- Numéros d'identité : $(Prp[:])\n\n")
+	write(fichier,"Armée :\n- Nombre de soldats : $(Trp_Strct.Soldats)\n- Nombre de bateaux : $(Trp_Strct.Bateaux)\n\n")
+	write(fichier,"Ressources :\n- Minerais : $(Trp_Strct.Minerais)\n- Blé : $(Trp_Strct.Blé)\n- Bois : $(Trp_Strct.Bois)\n- Pierre : $(Trp_Strct.Pierre)\n\n")
+	#Terr info
+	write(fichier,"2. DETAILS DES TERRITOIRES : \n\n")
+	for element in Prp
+		IF = Terr_Info(World,element)
+		for element in IF
+			write(fichier,element,"\n")
+		end
+		write(fichier,"\n")
+	end
+	#Info autres troupes
+	write(fichier,"3. INFORMATTIONS SUR LES AUTRES TROUPES : \n\n")
+	for element in LonesInfo
+		write(fichier,"$(uppercase(element.Nom)) :\n")
+		write(fichier,"Nombre de territoires : $(element.Territoires)\n")
+		write(fichier,"Nombre de soldats : $(element.Soldats)\n")
+		write(fichier,"Nombre de bateaux : $(element.Bateaux)\n")
+		write(fichier,"Quantité de minerais : $(element.Minerais)\n")
+		write(fichier,"Quantité de blé : $(element.Blé)\n")
+		write(fichier,"Quantité de bois : $(element.Bois)\n")
+		write(fichier,"Quantité de Pierre : $(element.Pierre)\n")
+		write(fichier,"\n")
+	end
+	close(fichier)
+end
+
+# ╔═╡ 470479de-fd0c-4a93-826b-82665a9ede0b
+"""
+		Generate_All_txt(World_Matrix,Actors_Matrix)
+	Cette fonction exécute la fonction `Save_Trp_Info(World_Matrix,Actors_Matrix,Trp)` pour chacune des troupes, de sorte à stocker tous les fichiers `.txt` nécessaires. Elle prend deux arguments : 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs ;
+	Notez qu'un code python `Word_generator.py` a aussi été créé pour convertir les fichiers `.txt` en `.docx`, afin de faciliter la lecture des scouts. Ce code doit être indépendemment de ce notebook. Il est disponible sur `Github`.
+	"""
+function Generate_All_txt(World_Matrix,Actors_Matrix)
+	for element in Troupe_Names
+		Save_Trp_Info(World_Matrix,Actors_Matrix,element)
+	end
 end
 
 # ╔═╡ a0406049-10c0-4b93-9f0e-ac7eebe6d979
@@ -1081,8 +1363,8 @@ Sélectionnez ici l'action que le joueur souhaite exécuter :
 # ╔═╡ 34d229fe-06af-4179-b44a-5c1208f86ff0
 begin
 	if Ass == true
-	md"""### Préparez votre attaque méticuleusement !!
-	Observez les caractéristiques des territoires que vous souhaitez impliquer dans l'attaque en remplissant les cases ci-dessus ! Ceci vosu permettra de prendre une meilleure décision !
+	md"""### Assurez-vous de votre stratégie...
+	Une fois ces cases remplies, impossible de faire marche arière : les caractéristiques du territoire que vous attaquez s'afficheront, pour que vous compreniez ce qui se passe, mais vous ne pourrez pas décider de batre en retraite !
 	
 	ID du territoire d'où part l'attaque : $(@bind AttStg html"<input type=text>")\
 	ID du territoire attaqué : $(@bind DefStg html"<input type=text>")
@@ -1167,7 +1449,7 @@ elseif Ass == true
 	@bind Ass_Data PlutoUI.confirm(
 		PlutoUI.combine() do Child
 			@htl("""
-			<h3>Sûr de votre coup ? Attaquez !</h3>
+			<h3>Lancez l'attaque !</h3>
 			
 			<ul>
 			$([
@@ -1270,6 +1552,17 @@ elseif Ass == true
 	Execute_Assault()
 end
 
+# ╔═╡ 0f158e7d-ac5f-4832-85a8-a1af5d822e62
+md"""### SAUVEGARDER LE JEU
+
+ $(@bind Save CheckBox()) Enregistrement des fiches résumées\
+"""
+
+# ╔═╡ f88939de-cd71-4ac7-ad72-6f485029a5c1
+if Save == true
+	Generate_All_txt(World,Troupes)
+end
+
 # ╔═╡ Cell order:
 # ╠═c7e31109-3c17-4880-b870-6dd45eb29aa1
 # ╟─b9b43e1a-fac4-403c-9bd7-02e9126f0ca8
@@ -1280,7 +1573,7 @@ end
 # ╟─ba82811c-91b4-4355-97ce-ea731c2000c9
 # ╠═61fbec2c-1003-4ccf-a588-0f5b927226f1
 # ╟─4f4b516e-00c6-4dc3-aee3-7fb8c1a1b8cf
-# ╠═2bebe9c0-b5af-4336-825a-9add6581d21d
+# ╟─2bebe9c0-b5af-4336-825a-9add6581d21d
 # ╟─1d6eba18-9d51-4c96-975d-bdc9c5d2e861
 # ╟─60a165a8-4e65-4948-8fd7-d8c744051037
 # ╟─0b8cd34c-02e7-4559-a687-bc1a8f020ddf
@@ -1299,18 +1592,22 @@ end
 # ╟─51fdab25-7c05-432d-a388-7949cfeddb3e
 # ╟─6ed6bcf1-4b61-4adf-ae18-22959bac3f1f
 # ╟─57d50a15-7578-4348-bc38-5e4196bf26c6
+# ╟─085d3212-a58f-49e6-925c-2fd134ad8471
 # ╟─2194282d-5203-4d1d-965e-b40469064624
 # ╟─f2a72f90-7841-4ccd-a09d-2c94f54476e8
 # ╟─3ffe698b-10f7-4164-93f5-d9338775cc74
 # ╟─6c0a40cd-d316-42bb-955a-00f2afdbefa0
 # ╟─49d6deec-8929-4e17-9ba7-a23cec4de568
-# ╠═554d8c87-8a34-4ca2-98ff-443dc8226381
+# ╟─554d8c87-8a34-4ca2-98ff-443dc8226381
 # ╟─3d3cc7ed-cf7a-4b4f-98e9-95359ad21cef
 # ╟─d45625d4-9e8f-4724-941e-e9b514a27651
 # ╟─82ce8603-027a-4197-8d9e-d6c471e416ed
 # ╟─ac9c1cb6-78ad-4387-83c5-c83522f5bb6d
 # ╟─4a58cec4-778c-4594-ae25-2492acddc68b
 # ╟─15ccf590-a109-4e7f-aa5a-b756d6fccbe9
+# ╟─f5019805-05db-4c60-b87b-de6f39ac5556
+# ╟─166ba06c-8fda-44a1-8d83-2c8bd90e3433
+# ╟─470479de-fd0c-4a93-826b-82665a9ede0b
 # ╟─2e77c3fc-94bd-4dfe-a8b9-4302db6b85fb
 # ╠═3b763c2f-83d8-4be6-9fb5-e6ce1881db52
 # ╠═1e15b72a-b0be-4045-961b-5e8de4cc9b4f
@@ -1321,13 +1618,16 @@ end
 # ╠═ec047408-2525-4947-bc4c-2df0ac126c7e
 # ╠═3f554a7d-8d0c-4258-ab9e-2a88d41fdda1
 # ╠═79b63986-ce3a-451e-be10-4bb90f76f93a
+# ╟─2d89b205-72d1-4a87-8d1a-1f5ad74704bf
 # ╟─018f1d80-9fbc-4d36-a41e-319c86511b76
-# ╟─ce6b11f9-8230-4076-8135-12df833d4a82
+# ╠═ce6b11f9-8230-4076-8135-12df833d4a82
 # ╟─a0406049-10c0-4b93-9f0e-ac7eebe6d979
 # ╟─400579f3-b212-4902-b96e-8659c33245da
 # ╟─89a6d635-ff6d-44d3-b2f7-7f64bc12ea47
 # ╟─91a757ac-e56c-4228-8cff-fbd25fa27714
 # ╟─34d229fe-06af-4179-b44a-5c1208f86ff0
 # ╟─e21132a8-c795-416d-90c1-d1817337af89
-# ╠═55be7c75-ee34-4a2e-b02d-b69402f82672
-# ╠═3daf9148-39d2-493c-96be-307d1e402436
+# ╟─55be7c75-ee34-4a2e-b02d-b69402f82672
+# ╟─3daf9148-39d2-493c-96be-307d1e402436
+# ╟─0f158e7d-ac5f-4832-85a8-a1af5d822e62
+# ╟─f88939de-cd71-4ac7-ad72-6f485029a5c1
