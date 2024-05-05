@@ -625,6 +625,26 @@ function Give_Market_State(World_Matrix)
 	return Min_Disc_frac,Blé_Disc_frac,Bois_Disc_frac,Pir_Disc_frac
 end
 
+# ╔═╡ ce1c8eb9-4ad7-4bb6-ac51-394cd187854a
+"""
+		Select_Catastrophee_Terr(World_Matrix,size)
+	Cette fonction sert à désigner les territoires qui subirtont une catastrophe. Elle prend deux arguments : 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le nombre de territoires par continent qui seront touchés pr la catstrophes. Les catstrophes s'appliquent à une certaine région donnée (territoires successifs)
+	Elle retourne une liste qui contient les numéros d'identité des territoires impliqués.
+	"""
+function Select_Catastrophee_Terr(World_Matrix,size)
+	Continents = [C1,C2,C3,C4,C5,C6]
+	Terrs = []
+	for i in 1:6
+		Terr = rand(Continents[i])
+		for j in 1:size
+			push!(Terrs,Terr+j)
+		end
+	end
+	return Terrs
+end
+
 # ╔═╡ 2194282d-5203-4d1d-965e-b40469064624
 md"### 5. Fonctions de modification du jeu
 Nous avons à présent toutes les fonctions qui permettent de créer le monde et ses joueurs et de collecter un certains nombre de données. Sur base de ces dernières, nous allons maintenant définir les fonctions qui permettent de modifier l'état du jeu en fonction des actions des joueurs."
@@ -706,6 +726,43 @@ end
 # Note : ne fait pour le moment rien si une entité bool existe déjà (with_terminal ne rend rien je dois réfléchir à ça)
 # Note : Pour le moment, aucune vérification n'est faite sur si oui ou non la troupe a assez d'argent pour acheter le territoire (à changer).
 
+# ╔═╡ f209d063-9403-4578-8fd8-f521f97089d6
+"""
+		Add_Mil_Entities(World_Matrix,Actors_Matrix,Trp::String,Entity::String,Qty)
+	Cette fonction permet d'acheter plusieurs bâteaux/soldats à la fois. Elle prend 5 arguments :
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs ;
+	- La troupe qui souhaite effectuer l'achat ;
+	- L'unité qui doit être achetée (`"Soldat"` ou `"Bateau"`);
+	- La quantité d'unités à acheter
+	Elle effectue les changements nécessaires dans le jeu et retourne un message qui renseigne l'état de l'achat. Attention : elle ne vérifie pas encore que la troupe à assez d'argent (comme la fonction `Add_Entity`,d'ailleurs) : A CHANGER
+	"""
+function Add_Mil_Entities(World_Matrix,Actors_Matrix,Trp::String,Entity::String,Qty)
+	Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+	Prp = Properties(World_Matrix,Trp)
+	Mat = []
+	for element in Prp
+		elm = Find_Terr(element,World_Matrix)
+		if elm.Type == 0
+			push!(Mat,elm)
+		end
+	end
+	Spawn_Terr = Mat[1]
+	imat = []
+	for i in 1:Qty
+		ppr = Add_Entity(World_Matrix,Actors_Matrix,Spawn_Terr,Entity)
+		push!(imat,i)
+	end
+	if Entity == "Soldat"
+		char = "s"
+	else
+		char = "x"
+	end
+	effective_adds = length(imat)
+	pr = "Acchat effectué : Les $Trp ont acheté $effective_adds $(lowercase(Entity))$char. Ils se situent au port de la capitale, sur le territoire n°$(Spawn_Terr.CaseID)."
+	return pr
+end
+
 # ╔═╡ 3ffe698b-10f7-4164-93f5-d9338775cc74
 """
 		Transfer_Troups(World_Matrix,TerrInit,TerrDest,Nbr)
@@ -729,45 +786,99 @@ function Transfer_Troups(World_Matrix,TerrInit::Territoire,TerrDest::Territoire,
 				TerrDest.Soldats = TerrDest.Soldats+Nbr
 				pr = "Transfert effectué : $Nbr Soldats ont été transférés du territoire n°$Terr_it vers le territoire n°$Terr_dt par les $Trp"
 			elseif TerrInit.Soldats == Nbr
-				pr = "Transfert impossible : vous devez au moins garder un soldat sur le territoire pour pouvoir l'occuper"
+				pr = "Transfert impossible : vous devez au moins garder un soldat sur le territoire n°$(Terr_it) pour pouvoir l'occuper"
 			else
-				pr = "Transfert impossible : vous n'avez pas assez de soldats sur le territoire initial"
+				pr = "Transfert impossible : vous n'avez pas assez de soldats sur le territoire n°$(Terr_it)"
 			end
-		elseif IsCont == false && TerrInit.Port == false && TerrDest.Port == false
-			pr = "Transfert intercontinental impossible : Vous n'avez de ports sur aucun des deux territoires ($Terr_it et $Terr_dt)"
-		elseif IsCont == false && TerrInit.Port == false && TerrDest.Port == true
-			pr = "Transfert intercontinental impossible : Vous n'avez pas de port sur le territoire n°$Terr_it."
-		elseif IsCont == false && TerrDest.Port == false && TerrInit.Port == true
-			pr = "Transfert intercontinental impossible : Vous n'avez pas de port sur le territoire n°$Terr_dt."
-		elseif IsCont == false && TerrInit.Port == true && TerrDest.Port == true
-			if Nbr ≤ Boat_Capacity*Boats_Init
-				Used_Boats = ceil(Nbr/Boat_Capacity)
-				if TerrInit.Soldats > Nbr
-					TerrInit.Soldats = TerrInit.Soldats-Nbr
-					TerrDest.Soldats = TerrDest.Soldats+Nbr
-					TerrInit.Bateaux = TerrInit.Bateaux-Used_Boats
-					TerrDest.Bateaux = TerrDest.Bateaux+Used_Boats
-					pr = "Transfert intercontinental effectué : $Nbr Soldats ont été transférés du territoire n°$Terr_it avec $Used_Boats bateau(x) vers le territoire n°$Terr_dt par les $Trp"
-				elseif TerrInit.Soldats == Nbr
-					pr = "Transfert impossible : vous devez au moins garder un soldat sur le territoire pour pouvoir l'occuper"
-				else
-					pr = "Transfert impossible : vous n'avez pas assez de soldats sur le territoire initial"
+		elseif IsCont == false && (TerrInit.IsCoast == false && TerrInit.IsFluvial == false) || (TerrDest.IsCoast == false && TerrDest.IsFluvial == false)
+			pr = "Transfert intercontinental impossible : les territoires n°$(Terr_it) et n°$(Terr_dt) doivent tous les deux être soit fluviaux, soit côtiers."
+		elseif IsCont == false && (TerrInit.IsCoast == true || TerrInit.IsFluvial == true) && (TerrDest.IsCoast == true || TerrDest.IsFluvial == true)
+			if TerrInit.Port == false && TerrDest.Port == false
+				pr = "Transfert intercontinental impossible : Vous n'avez de ports sur aucun des deux territoires ($Terr_it et $Terr_dt)"
+			elseif TerrInit.Port == false && TerrDest.Port == true
+				pr = "Transfert intercontinental impossible : Vous n'avez pas de port sur le territoire n°$Terr_it."
+			elseif TerrDest.Port == false && TerrInit.Port == true
+				pr = "Transfert intercontinental impossible : Vous n'avez pas de port sur le territoire n°$Terr_dt."
+			elseif TerrInit.Port == true && TerrDest.Port == true
+				if Nbr ≤ Boat_Capacity*Boats_Init
+					Used_Boats = ceil(Nbr/Boat_Capacity)
+					if TerrInit.Soldats > Nbr
+						TerrInit.Soldats = TerrInit.Soldats-Nbr
+						TerrDest.Soldats = TerrDest.Soldats+Nbr
+						TerrInit.Bateaux = TerrInit.Bateaux-Used_Boats
+						TerrDest.Bateaux = TerrDest.Bateaux+Used_Boats
+						pr = "Transfert intercontinental effectué : $Nbr Soldats ont été transférés du territoire n°$Terr_it avec $Used_Boats bateau(x) vers le territoire n°$Terr_dt par les $Trp"
+					elseif TerrInit.Soldats == Nbr
+						pr = "Transfert impossible : vous devez au moins garder un soldat sur le territoire n°$(Terr_it) pour pouvoir l'occuper"
+					else
+						pr = "Transfert impossible : vous n'avez pas assez de soldats sur le territoire n°$(Terr_it)"
+					end
+				elseif Boats_Init == 0
+					pr = "Transfert intercontinental impossible : construisez d'abord des bateaux sur le territoire n°$(Terr_it) !"
+				elseif Nbr > Boat_Capacity*Boats_Init
+					Tf_max = Boat_Capacity*Boats_Init
+					pr = "Transfert intercontinental impossible : Un bateau ne peut contenir que $Boat_Capacity soldats maximum. Vous essayez de tranférer $Nbr soldats, mais vous ne possédez que de $Boats_Init bateaux... A moins de construire des bateaux supplémentaires, vous ne pouvez tranférer que maximum $Tf_max soldats."
 				end
-			elseif Boats_Init == 0
-				pr = "Transfert intercontinental impossible : construisez d'abord des bateaux !"
-			elseif Nbr > Boat_Capacity*Boats_Init
-				Tf_max = Boat_Capacity*Boats_Init
-				pr = "Transfert intercontinental impossible : Un bateau ne peut contenir que $Boat_Capacity soldats maximum. Vous essayez de tranférer $Nbr soldats, mais vous ne possédez que de $Boats_Init bateaux... A moins de construire des bateaux supplémentaires, vous ne pouvez tranférer que maximum $Tf_max soldats."
 			end
 		else
 			pr = "Other error"
 		end
 	else
-		pr = "Transfert impossible : Vous devez choisir des territoires qui vous appartiennent"
+		pr = "Transfert impossible : Vous devez choisir des territoires qui vous appartiennent."
 	end
 	return pr
 end
 #Note : ne vérifie pas si les territoires sont adjacents...
+
+# ╔═╡ fbd3a901-c2b2-4e3f-8610-2da7a12c7b13
+"""
+		Spread_Soldiers(World_Matrix,Actors_Matrix,Trp,Terrsinit,Terrsend)
+	Cette fonction permet de répartir équitable toutes les troupes se trouvant sur un territoire sur plusieurs autres territoires. Elle prend 5 arguments : 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs ;
+	- Le nom de la troupe qui souhaite effectuer les transferts ;
+	- Le numéro d'identité du territoire de départ ;
+	- Une liste contenant les numéros d'identité des territoires d'arrivée.
+	Elle effectue tous les changement snécessaires dans le jeu et retourne un message par transfert, qui renseigne sur létat du transfert. Quelques remarques : 
+	- Il est possible de mettre le territoire de départ dans la liste des territoires d'arrivée (au cas où le joueur souhaite laisser des troupes sur le territoire de départ);
+	- Ce n'est pas parce que l'un des transferts est impossible que les autres transferts n'ont pas lieu ! Donc le joueur doit veiller à ce que tout soit correct dès le départ, s'il ne veut pas perdre de temps.
+	"""
+function Spread_Soldiers(World_Matrix,Actors_Matrix,Trp,Terrsinit,Terrsend)
+	Terrsinit_Strct = Find_Terr(Terrsinit,World_Matrix)
+	Terrsend_Strct = []
+	error = false
+	if Terrsinit_Strct.Troupe ≠ Trp
+		error = true
+	end
+	for element in Terrsend
+		TS = Find_Terr(element,World_Matrix)
+		if TS.Troupe == Trp
+			push!(Terrsend_Strct,TS)
+		else
+			error = true
+		end
+	end
+
+	if error == true
+		pr = "Transfert impossible : au moins un des territoires sélectionné ne vous appartient pas."
+	else
+		Tot_Soldats = Terrsinit_Strct.Soldats-1
+		nbr_terrend = length(Terrsend_Strct)
+		Rest = Tot_Soldats % nbr_terrend
+		Soldiers_to_move = (Tot_Soldats-Rest)/nbr_terrend
+		if Soldiers_to_move == 0
+			pr = "Transferts impossibles : Vous n'avez pas assez de soldats sur le territoire n°$Terrsinit."
+		else
+			pr = []
+			for element in Terrsend_Strct
+				ppr = Transfer_Troups(World_Matrix,Terrsinit_Strct,element,Soldiers_to_move)
+				push!(pr,ppr)
+			end
+		end
+	end
+		
+	return pr
+end
 
 # ╔═╡ 6c0a40cd-d316-42bb-955a-00f2afdbefa0
 """
@@ -1371,26 +1482,6 @@ md"""
 # ╔═╡ 2e77c3fc-94bd-4dfe-a8b9-4302db6b85fb
 md"### 8. Fonctions \"`Execute()`\""
 
-# ╔═╡ ce1c8eb9-4ad7-4bb6-ac51-394cd187854a
-"""
-		Select_Catastrophee_Terr(World_Matrix,size)
-	Cette fonction sert à désigner les territoires qui subirtont une catastrophe. Elle prend deux arguments : 
-	- Le vecteur qui contient tous les territoires composant le monde ;
-	- Le nombre de territoires par continent qui seront touchés pr la catstrophes. Les catstrophes s'appliquent à une certaine région donnée (territoires successifs)
-	Elle retourne une liste qui contient les numéros d'identité des territoires impliqués.
-	"""
-function Select_Catastrophee_Terr(World_Matrix,size)
-	Continents = [C1,C2,C3,C4,C5,C6]
-	Terrs = []
-	for i in 1:6
-		Terr = rand(Continents[i])
-		for j in 1:size
-			push!(Terrs,Terr+j)
-		end
-	end
-	return Terrs
-end
-
 # ╔═╡ 79b63986-ce3a-451e-be10-4bb90f76f93a
 md"### 9. Notes Réunions
 #### To do dernière réunion
@@ -1399,8 +1490,6 @@ md"### 9. Notes Réunions
 - Garde royale : to do
 - Problème fonction affichage multiple : soldats obligatoires
 - Fonction de transfert de ressources (pour payage)
-- Acheter soldats pour tour d'après, spawn au cont de départ
-- fonction de répartition équitable des soldtas sur les territoires
 - Si les territoires sont fluviaux : max 1 bateau. Si côtier : illimité. Si fluvial : plus de blé (eau douce, meilleures cultures)
 ##### Pas code : 
 - Carte espion : en réel
@@ -1412,7 +1501,7 @@ md"### 9. Notes Réunions
 
 # ╔═╡ 2d89b205-72d1-4a87-8d1a-1f5ad74704bf
 md""" #### Mises à jour
-- Intégration de l'importance des ports et du nombre de bâteaux pour les voyages intercontinentaux (fonctions `Assault` et `Transfer_Troups`)
+- Intégration de l'importance des ports et du nombre de bateaux pour les voyages intercontinentaux (fonctions `Assault` et `Transfer_Troups`)
 - Changement du message d'attaque
 - Créations de fiches de situation pour les troupes
 - Etant donné les gains des ressources à chaque tour lors de l'expérience de jeu précédente, il m'a semblé que 100 était un coefficient suffisamment grand pour les ressources (200 c'est trop)
@@ -1426,6 +1515,8 @@ md""" #### Mises à jour
 - Pour pallier cette hausse, les troupes commencent toutes le jeu avec 50 soldats au lieu de 30
 - Fonction worldfiller modifiée
 - Catastrophes introduites : incendies, tremblements de terre, pluies tropicales (intégrées à new turn : à faire avant la convoc des scouts)
+- Fonction `Spread_Troups` : permet la répartition équitable de soldats sur plusieurs territoires
+- Achat de soldats/bateaux possibles en masse. Spawn au point de départ.
 """
 
 # ╔═╡ 663892ec-07d8-4237-b942-1d3bc6aed9ce
@@ -1832,6 +1923,14 @@ begin
 	ID du territoire d'où part l'attaque : $(@bind AttStg html"<input type=text>")\
 	ID du territoire attaqué : $(@bind DefStg html"<input type=text>")
 	"""
+	elseif Transfer == true
+	md"""
+	 $(@bind Multiple_Transfer CheckBox()) Transférer plusieurs troupes en une fois\
+	"""
+	elseif Buy == true
+	md"""
+	 $(@bind Buy_Mil CheckBox()) Acheter plusieurs unités militaires (soldats ou bateaux)\
+	"""
 	end
 end
 
@@ -1862,37 +1961,72 @@ Execute_Display_TerrAttInfo()
 
 # ╔═╡ 55be7c75-ee34-4a2e-b02d-b69402f82672
 if Buy == true
-	@bind Adding_Data PlutoUI.confirm(
-		PlutoUI.combine() do Child
-			@htl("""
-			<h3>Achat d'un nouveau bâtiment</h3>
-			
-			<ul>
-			$([
-				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
-				for name in ["Numéro d'identité du territoire concerné ", "Bâtiment que la troupe souhaite ajouter "]
-			])
-			</ul>
-			""")
-		end
-	)
+	if Buy_Mil == false
+		@bind Adding_Data PlutoUI.confirm(
+			PlutoUI.combine() do Child
+				@htl("""
+				<h3>Achat d'un nouveau bâtiment</h3>
+				
+				<ul>
+				$([
+					@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+					for name in ["Numéro d'identité du territoire concerné ", "Bâtiment que la troupe souhaite ajouter "]
+				])
+				</ul>
+				""")
+			end
+		)
+	elseif Buy_Mil == true
+		@bind Buy_Mil_Data PlutoUI.confirm(
+			PlutoUI.combine() do Child
+				@htl("""
+				<h3>Achat d'unités militaires</h3>
+				
+				<ul>
+				$([
+					@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+					for name in ["Troupe qui désire effectuer l'achat ", "Unité à acheter ","Quantité d'unités "]
+				])
+				</ul>
+				""")
+			end
+		)
+	end
 elseif Turn == true
 	md"""Veuillez, par sécurité, écrire : "`Je confirme qu'un nouveau tour doit avoir lieu`" : $@bind Mess_Turn PlutoUI.confirm(html"<input type=text>")"""
 elseif Transfer == true
-	@bind Transfer_Data PlutoUI.confirm(
-		PlutoUI.combine() do Child
-			@htl("""
-			<h3>Transfert de troupe(s)</h3>
-			
-			<ul>
-			$([
-				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
-				for name in ["Numéro du territoire de départ ", "Numéro du territoire de destination ", "Nombre de troupes à transférer "]
-			])
-			</ul>
-			""")
-		end
-	)
+	if Multiple_Transfer == false
+		@bind Transfer_Data PlutoUI.confirm(
+			PlutoUI.combine() do Child
+				@htl("""
+				<h3>Transfert de troupe(s)</h3>
+				
+				<ul>
+				$([
+					@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+					for name in ["Numéro du territoire de départ ", "Numéro du territoire de destination ", "Nombre de troupes à transférer "]
+				])
+				</ul>
+				""")
+			end
+		)
+	elseif Multiple_Transfer == true
+		@bind Multiple_Transfer_Data PlutoUI.confirm(
+			PlutoUI.combine() do Child
+				@htl("""
+				<h3>Transfert MULTIPLE de troupes</h3>
+				<h6>Attention : veillez à séparer les éléments avec des virgules !</h6>
+				<ul>
+				
+				$([
+					@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+					for name in ["Numéro du territoire de départ ", "Numéro des territoires de destination "]
+				])
+				</ul>
+				""")
+			end
+		)
+	end
 elseif Salt == true
 	@bind Salt_Data PlutoUI.confirm(
 		PlutoUI.combine() do Child
@@ -1952,6 +2086,21 @@ function Execute_Buy()
 	catch
 		with_terminal() do
 			println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer votre achat")
+		end
+	end
+end
+
+# ╔═╡ 8a577e66-9a7a-49e6-abbf-b0f615bab9ed
+function Execute_Buy_Mil()
+	try
+		Trp = Buy_Mil_Data[1]
+		Unit = Buy_Mil_Data[2]
+		Qty = parse(Int64,Buy_Mil_Data[3])
+		pr = Add_Mil_Entities(World, Troupes,Trp,Unit,Qty)
+		println(pr)
+	catch
+		with_terminal() do
+			println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer vos achats.")
 		end
 	end
 end
@@ -2033,13 +2182,50 @@ function Execute_Ressource_Exchange()
 	end
 end
 
+# ╔═╡ d7142012-cb96-468d-b6f1-e05ebe7e5f8f
+function Execute_Spread_Soldiers()
+	try
+		Dep_Terr = parse(Int64,Multiple_Transfer_Data[1])
+		Dep_Terr_Strct = Find_Terr(Dep_Terr,World)
+		Trp = Dep_Terr_Strct.Troupe
+		Arr_Terr_Strg = Multiple_Transfer_Data[2]
+		Arr_Terr_Strg_Splited = split(Arr_Terr_Strg, ",")
+		Arr_Terr_list = []
+			for element in Arr_Terr_Strg_Splited
+				flt = parse(Int64,element)
+				push!(Arr_Terr_list,flt)
+			end
+		pr = Spread_Soldiers(World,Troupes,Trp,Dep_Terr,Arr_Terr_list)
+		if typeof(pr) == String
+			println(pr)
+		else
+			for element in pr
+				println(element)
+				println("\n")
+			end
+		end
+	catch
+		with_terminal() do
+			println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer les transferts")
+		end
+	end
+end
+
 # ╔═╡ 3daf9148-39d2-493c-96be-307d1e402436
 if Buy == true
-	Execute_Buy()
+	if Buy_Mil == false
+		Execute_Buy()
+	elseif Buy_Mil == true
+		Execute_Buy_Mil()
+	end
 elseif Turn == true
 	Execute_NewTurn()
 elseif Transfer == true
-	Execute_Transfer()
+	if Multiple_Transfer == false
+		Execute_Transfer()
+	elseif Multiple_Transfer == true
+		Execute_Spread_Soldiers()
+	end
 elseif Salt == true
 	Execute_Ressource2Salt()
 elseif Ass == true
@@ -2094,7 +2280,9 @@ end
 # ╟─ce1c8eb9-4ad7-4bb6-ac51-394cd187854a
 # ╟─2194282d-5203-4d1d-965e-b40469064624
 # ╟─f2a72f90-7841-4ccd-a09d-2c94f54476e8
+# ╟─f209d063-9403-4578-8fd8-f521f97089d6
 # ╟─3ffe698b-10f7-4164-93f5-d9338775cc74
+# ╟─fbd3a901-c2b2-4e3f-8610-2da7a12c7b13
 # ╟─6c0a40cd-d316-42bb-955a-00f2afdbefa0
 # ╟─49d6deec-8929-4e17-9ba7-a23cec4de568
 # ╟─554d8c87-8a34-4ca2-98ff-443dc8226381
@@ -2112,6 +2300,7 @@ end
 # ╟─470479de-fd0c-4a93-826b-82665a9ede0b
 # ╟─2e77c3fc-94bd-4dfe-a8b9-4302db6b85fb
 # ╟─3b763c2f-83d8-4be6-9fb5-e6ce1881db52
+# ╟─8a577e66-9a7a-49e6-abbf-b0f615bab9ed
 # ╟─1e15b72a-b0be-4045-961b-5e8de4cc9b4f
 # ╟─ca705873-8374-4baa-a4c4-65d1ccdb5698
 # ╟─a1b4005e-6e10-45ee-b018-6ff5c0a1a4a9
@@ -2121,11 +2310,12 @@ end
 # ╟─3f554a7d-8d0c-4258-ab9e-2a88d41fdda1
 # ╟─662471db-b727-4371-9efd-0f2d5e03e4be
 # ╟─fc69d958-b5e0-45b8-bdcc-6ca858059fc0
+# ╟─d7142012-cb96-468d-b6f1-e05ebe7e5f8f
 # ╟─79b63986-ce3a-451e-be10-4bb90f76f93a
 # ╟─2d89b205-72d1-4a87-8d1a-1f5ad74704bf
 # ╟─663892ec-07d8-4237-b942-1d3bc6aed9ce
 # ╟─018f1d80-9fbc-4d36-a41e-319c86511b76
-# ╠═ce6b11f9-8230-4076-8135-12df833d4a82
+# ╟─ce6b11f9-8230-4076-8135-12df833d4a82
 # ╟─a0406049-10c0-4b93-9f0e-ac7eebe6d979
 # ╟─400579f3-b212-4902-b96e-8659c33245da
 # ╟─89a6d635-ff6d-44d3-b2f7-7f64bc12ea47
