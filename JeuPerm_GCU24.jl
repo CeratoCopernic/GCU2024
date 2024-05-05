@@ -30,6 +30,7 @@ begin
 	#using Genie
 	#using Observables
 	#using GLMakie
+	using Statistics
 	using HypertextLiteral
 	using DelimitedFiles #NEW
 	using Dates # NEW
@@ -90,7 +91,6 @@ mutable struct Territoire
 	IsFluvial::Bool
 	IsCoast::Bool
 	IsMountains::Bool
-	#Neighbours::Array
 end
 
 # ╔═╡ ba82811c-91b4-4355-97ce-ea731c2000c9
@@ -127,8 +127,9 @@ Dans cette section, les paramètres constants du jeu sont définis. Ceux-ci ne c
 # ENTRER ICI LES CARACTERISTIQUES FIXES DU JEU
 begin
 	const Coast = [1,2,3,4,5,6,11,10,16,22,23,28,27,31,30,26,25,24,29,19,18,17,12,32,33,34,35,36,37,40,43,51,52,54,60,67,68,71,72,74,73,70,64,65,66,58,59,49,50,48,42,39,75,76,77,78,79,80,81,82,83,84,87,106,107,103,102,104,105,100,97,93,92,88,89,90,99,96,94,91,85,86,108,109,110,111,113,114,115,124,127,133,134,135,144,153,154,151,150,149,157,156,155,146,145,136,137,128,116,158,159,160,161,162,163,164,165,166,171,180,187,190,189,188,185,184,183,182,175,176,172,168,167,191,192,193,194,195,196,201,205,214,223,222,230,233,232,228,227,231,226,225,224,215,207,206,202,234,235,236,237,238,239,240,241,242,243,244,245,246] #Liste des territoires côtiers
-	const Fluv = [1,2,9] #Liste des territoires en bordure de fleuve
-	const Mount = [5,8,9] #Liste des territoires montagneux
+	const Fluv = [108,109,117,116,119,128,137,136,138,145,146,150,151,141,142,132,143,131,134,135,133,172,178,177,179,180,174,173,170,171,215,224,216,208,209,210,218,211,212,203,97,95,94,93,91,24,19,25,14,15,9,16,21,22,28,23,20] #Liste des territoires en bordure de fleuve
+	const Capitals = [22,42,91,146,172,224]
+	const Mount = [] #Liste des territoires montagneux
 	const Farm_Cost = [90 100 0 0] #Ordre : Bois, Pierre, Blé, Minerais
 	const Mine_Cost = [90 100 0 0]
 	const Saw_Cost = [90 100 0 0]
@@ -139,6 +140,7 @@ begin
 	const Port_Cost = [150 300 0 0]
 	const Start_Ressources = [1100 1100 1500 100]
 	const Troupe_Names = ["Archers", "Hardis", "Paladins","Lanciers","Gueux","Preux","Vaillants","Chevaliers","Templiers","Servants","Autochtones"]
+	const Catas = ["tropical rains","earthquakes","forest fires"]
 	const World_Size = 246
 	const Ref_Money = 500
 	const Boat_Capacity = 10
@@ -284,12 +286,64 @@ function Start_Game()
 		Base_Terr = World_Matrix[247-i]
 		Base_Terr.Troupe = Actors_Matrix[i].Nom
 		Base_Terr.Soldats = 30
-		Base_Terr.Bateaux = 1
+		Base_Terr.Bateaux = 3
+		Base_Terr.Port = true
 	end
-	#Il y a entre 1 et 5 soldats autochtones par territoire au début du jeu
+	#Nombre d'autochtones
 	for element in World_Matrix[1:236]
-		element.Soldats = round(4*rand(1)[1])+1
+		if element.IsCoast == true && element.IsFluvial == true && element.CaseID ∉ Capitals
+			element.Soldats = a = round((6+(element.Type-3))*rand(1)[1])+2+(element.Type-1) #Entre 3 et 13 (fct de la taille)
+		elseif (element.IsCoast == false && element.IsFluvial == true) || (element.IsCoast == true && element.IsFluvial == false) && element.CaseID ∉ Capitals
+			element.Soldats = a = round((5+(element.Type-4))*rand(1)[1])+1+(element.Type-1) #Entre 2 et 10
+		elseif element.CaseID ∈ Capitals
+			element.Soldats = 15+element.Type #Capitale : mauvais bail
+			element.Ferme = true
+			element.Mine = true
+			element.Carrière = true
+			element.Scierie = true
+			element.Port = true
+			element.Bateaux = round(2*rand(1)[1])+4
+		else
+			element.Soldats = round((4+(element.Type-4))*rand(1)[1])+1+(element.Type-1) #Entre 1 et 8
+		end
 	end
+	#Parsemer des bâtiments
+	for element in World_Matrix[1:236]
+		if element ∉ Capitals
+			factor = element.Soldats
+			chances = []
+			for i in 1:5
+				a = floor(round((5+factor)*rand(1)[1])/10)
+				if a > 0
+					bool = true
+				else
+					bool = false
+				end
+				push!(chances,bool)
+			end
+			if chances[1] == true
+				element.Ferme = true
+			end
+			if chances[2] == true
+				element.Scierie = true
+			end
+			if chances[3] == true
+				element.Carrière = true
+			end
+			if chances[4] == true
+				element.Mine = true
+			end
+			if chances[5] == true && (element.IsCoast == true || element.IsFluvial == true)
+				element.Port = true
+				element.Bateaux = floor(round((17+2*factor)*rand(1)[1])/10)
+			end
+		end
+	end
+	#Donner le nécessaire aux autochtones
+	Actors_Matrix[11].Bois = 1000*Start_Ressources[1]
+	Actors_Matrix[11].Pierre = 1000*Start_Ressources[2]
+	Actors_Matrix[11].Blé = 1000*Start_Ressources[3]
+	Actors_Matrix[11].Minerais = 1000*Start_Ressources[4]
 	return World_Matrix, Actors_Matrix
 end
 
@@ -305,23 +359,10 @@ md"##### 3.3. Création d'une situation de jeu fictive"
 	**N.B.** Cette fonction est provisoire : elle sert uniquement à tester les fonctions suivantes pour vérifier que le jeu tourne correctement. Elle ne sera pas utilisée à terme pour le déroulement du jeu en réel : elle deviendra plus tard la foncion `Start_Game()` et devra, à cette fin, être modifiée pour ne plus créer une situation fictive
 	"""
 function Temporary_WorldFiller(World_Matrix,Actors_Matrix)
-	for Terr in World_Matrix
-		Terr.Minerais=30*rand(1)[1]
-		Terr.Blé=30*rand(1)[1]
-		Terr.Bois=30*rand(1)[1]
-		Terr.Pierre=30*rand(1)[1]
-		Terr.Soldats = round(10*rand(1)[1])
-	end
-	for element in Actors_Matrix
-		element.Bois = Start_Ressources[1]
-		element.Pierre = Start_Ressources[2]
-		element.Blé = Start_Ressources[3]
-		element.Minerais = Start_Ressources[4]
-	end
 	for i in 1:Int(round(size(World_Matrix)[1]/5))
 		World_Matrix[i].Troupe = rand(Troupe_Names)
 	end
-	return World_Matrix
+	return World_Matrix,Actors_Matrix
 end
 
 # ╔═╡ dc8eff81-5e94-4cb2-8e78-b822f307a120
@@ -541,6 +582,47 @@ function Is_SameContinent(World_Matrix,Terr1::Int,Terr2::Int)
 		Iscont = true
 	end
 	return Iscont
+end
+
+# ╔═╡ 88bf0967-64e5-4e4d-a891-374f52093b92
+"""
+		Give_Market_State(World_Matrix)
+	Cette fonction sert de base à la détermination des taux de change des ressources. Elle prend un seul argument : 
+	- Le vecteur qui contient tous les territoires composant le monde.
+	Elle retourne un `tuple` de 4 éléments, qui correspondent chacun au pourcentage des ressources découvertes par rapport à ce qu'il y a au total dans le monde (ordre : minerais - blé - bois - pierre). 
+	"""
+function Give_Market_State(World_Matrix)
+	Min_Aut = 0
+	Blé_Aut = 0
+	Bois_Aut = 0
+	Pir_Aut = 0
+	Min_Tot = 0
+	Blé_Tot = 0
+	Bois_Tot = 0
+	Pir_Tot = 0
+	for element in World_Matrix
+		if element.Troupe == "Autochtones"
+			Min_Aut += (0.8+2*element.Type/10)*element.Minerais
+			Blé_Aut += (0.8+2*element.Type/10)*element.Blé
+			Bois_Aut += (0.8+2*element.Type/10)*element.Bois
+			Pir_Aut += (0.8+2*element.Type/10)*element.Pierre
+
+			Min_Tot += (0.8+2*element.Type/10)*element.Minerais
+			Blé_Tot += (0.8+2*element.Type/10)*element.Blé
+			Bois_Tot += (0.8+2*element.Type/10)*element.Bois
+			Pir_Tot += (0.8+2*element.Type/10)*element.Pierre
+		else
+			Min_Tot += (0.8+2*element.Type/10)*element.Minerais
+			Blé_Tot += (0.8+2*element.Type/10)*element.Blé
+			Bois_Tot += (0.8+2*element.Type/10)*element.Bois
+			Pir_Tot += (0.8+2*element.Type/10)*element.Pierre
+		end
+	end
+	Min_Disc_frac = 1-Min_Aut/Min_Tot
+	Blé_Disc_frac = 1-Blé_Aut/Blé_Tot
+	Bois_Disc_frac = 1-Bois_Aut/Bois_Tot
+	Pir_Disc_frac = 1-Pir_Aut/Pir_Tot
+	return Min_Disc_frac,Blé_Disc_frac,Bois_Disc_frac,Pir_Disc_frac
 end
 
 # ╔═╡ 2194282d-5203-4d1d-965e-b40469064624
@@ -784,7 +866,7 @@ Cette fonction exécute un nouveau tour. Elle prend 2 arguments :
 - Le vecteur qui contient tous les joueurs ;
 Elle ne retourne rien mais exécute les actions suivantes : 
 - Verse à chaque troupe les rentes de leurs territoires respectifs ;
-- Retire à chaque troupe la quantité de blé nécessaire pour entretenir son armée. Si la quantité de blé est insuffisante, la quantité de blé est mise à 0 et la troupe perd 1/3 de ses effectifs sur tous ses territoires (encore à implémenter : ne marche pas pour le moment)
+- Retire à chaque troupe la quantité de blé nécessaire pour entretenir son armée. Si la quantité de blé est insuffisante, la quantité de blé est mise à 0 et la troupe perd 1/3 de ses effectifs sur tous ses territoires (encore à implémenter : ne marche pas pour le moment). Une catastrophe naturelle se prouit à chaque tour. le rapports sont automatiquemet enregistrés dans le PC (moyennant l'exécution des deux codes Py)
 	"""
 function New_Turn(World_Matrix,Actors_Matrix)
 	for Trp in Actors_Matrix
@@ -793,24 +875,24 @@ function New_Turn(World_Matrix,Actors_Matrix)
 			CaseID = Prop[i]
 			Terr = World_Matrix[CaseID]
 			if Terr.Ferme == true
-				Trp.Blé += 2*Terr.Blé
+				Trp.Blé += 2*(0.8+2*Terr.Type/10)*Terr.Blé
 			else
-				Trp.Blé += Terr.Blé
+				Trp.Blé += (0.8+2*Terr.Type/10)*Terr.Blé
 			end
 			if Terr.Scierie == true
-				Trp.Bois += 2*Terr.Bois
+				Trp.Bois += 2*(0.8+2*Terr.Type/10)*Terr.Bois
 			else
-				Trp.Bois += Terr.Bois
+				Trp.Bois += (0.8+2*Terr.Type/10)*Terr.Bois
 			end
 			if Terr.Carrière == true
-				Trp.Pierre += 2*Terr.Pierre
+				Trp.Pierre += 2*(0.8+2*Terr.Type/10)*Terr.Pierre
 			else
-				Trp.Pierre += Terr.Pierre
+				Trp.Pierre += (0.8+2*Terr.Type/10)*Terr.Pierre
 			end
 			if Terr.Mine == true
-				Trp.Minerais += 2*Terr.Minerais
+				Trp.Minerais += 2*(0.8+2*Terr.Type/10)*Terr.Minerais
 			else
-				Trp.Minerais += Terr.Minerais
+				Trp.Minerais += (0.8+2*Terr.Type/10)*Terr.Minerais
 			end
 		end
 		Sold_Nbr = Trp.Soldats
@@ -878,12 +960,12 @@ function Assault(World_Matrix,Att_Terr_Int::Int, Def_Terr_Int::Int)
 			if Att_nbr_rest == 1 #Si la défense gagne
 				Att_Terr.Soldats = 1
 				Def_Terr.Soldats = Def_nbr_rest
-				pr = "L'attaque a échoué : Les $Def_Trp ont réussi à défendre leur territoire! Il leur reste $Def_nbr_rest soldats sur leur territoire. Toutes les troupes des $Att_Trp sont tombées au combat... Seul 1 soldat reste sur le territoire $Att_Terr_Int."
+				pr = "DÉFAITE...\n\nLes $Def_Trp ont réussi à défendre leur territoire! Il leur reste $Def_nbr_rest soldats sur leur territoire. Toutes les troupes des $Att_Trp sont tombées au combat... Seul 1 soldat reste sur le territoire $Att_Terr_Int.\n\nPERTES DE L'ATTAQUANT : $(Att_nbr-Att_nbr_rest)                               PERTES DU DEFENSEUR :$(Def_nbr-Def_nbr_rest)"
 			elseif Def_nbr_rest == 0 #Si l'attaque gagne
 				Att_Terr.Soldats = 1
 				Def_Terr.Troupe = Att_Trp
 		    	Def_Terr.Soldats = Att_nbr_rest-1
-				pr = "L'attaque est un succès : Les $Att_Trp ont vaincu la défense des $Def_Trp, qui ont perdu toutes leurs troupes au combat ! Les $Att_Trp occupent donc maintenant le territoire numéro $Def_Terr_Int avec $(Att_nbr_rest-1) soldats. 1 soldat est resté défendre le territoire $Att_Terr_Int."
+				pr = "VICTOIRE !!\n\nLes $Att_Trp ont vaincu la défense des $Def_Trp, qui ont perdu toutes leurs troupes au combat ! Les $Att_Trp occupent donc maintenant le territoire numéro $Def_Terr_Int avec $(Att_nbr_rest-1) soldats. 1 soldat est resté défendre le territoire $Att_Terr_Int.\n\nPERTES DE L'ATTAQUANT : $(Att_nbr-Att_nbr_rest)                               PERTES DU DEFENSEUR : $(Def_nbr-Def_nbr_rest)"
 			else
 				println("Erreur 404")
 			end
@@ -925,18 +1007,21 @@ function Assault(World_Matrix,Att_Terr_Int::Int, Def_Terr_Int::Int)
 					Def_Terr.Soldats = Def_nbr_rest
 					Def_Terr.Bateaux = Def_Terr.Bateaux + Needed_Boats
 					Att_Terr.Bateaux = Att_Terr.Bateaux - Needed_Boats
-					pr = "L'attaque a échoué : Les $Def_Trp ont réussi à défendre leur territoire! Il leur reste $Def_nbr_rest soldats sur leur territoire. Toutes les troupes des $Att_Trp sont tombées au combat... Seul 1 soldat reste sur le territoire $Att_Terr_Int."
+					pr = "DÉFAITE...\n\nLes $Def_Trp ont réussi à défendre leur territoire! Il leur reste $Def_nbr_rest soldats sur leur territoire. Toutes les troupes des $Att_Trp sont tombées au combat... Seul 1 soldat reste sur le territoire $Att_Terr_Int.\n\nPERTES DE L'ATTAQUANT : $(Att_nbr-Att_nbr_rest)                               PERTES DU DEFENSEUR : $(Def_nbr-Def_nbr_rest)"
 				elseif Def_nbr_rest == 0 #Si l'attaque gagne
 					Att_Terr.Soldats = 1
 					Def_Terr.Troupe = Att_Trp
 			    	Def_Terr.Soldats = Att_nbr_rest-1
 					Def_Terr.Bateaux = Def_Terr.Bateaux + Needed_Boats
 					Att_Terr.Bateaux = Att_Terr.Bateaux - Needed_Boats
-					pr = "L'attaque est un succès : Les $Att_Trp ont vaincu la défense des $Def_Trp, qui ont perdu toutes leurs troupes au combat ! Les $Att_Trp occupent donc maintenant le territoire numéro $Def_Terr_Int avec $(Att_nbr_rest-1) soldats. 1 soldat est resté défendre le territoire $Att_Terr_Int."
+					pr = "VICTOIRE !!\n\nLes $Att_Trp ont vaincu la défense des $Def_Trp, qui ont perdu toutes leurs troupes au combat ! Les $Att_Trp occupent donc maintenant le territoire numéro $Def_Terr_Int avec $(Att_nbr_rest-1) soldats. 1 soldat est resté défendre le territoire $Att_Terr_Int.\n\nPERTES DE L'ATTAQUANT : $(Att_nbr-Att_nbr_rest)                               PERTES DU DEFENSEUR : $(Def_nbr-Def_nbr_rest)"
 				else
 					println("Erreur 404")
 				end
 			end
+		#Si pas de bateaux du tout
+		elseif Att_Terr.Bateaux == 0
+			pr = "Attaque impossible : cette attaque nécessite une traversée de la mer! Construisez un ou plusieurs bateau(x) dans votre port avant de lancer l'expédition !"
 		#Si pas assez de bâteaux pour transporter toutes les troupes
 		elseif Att_Terr.Bateaux < (Att_Terr.Soldats-1)/Boat_Capacity
 			Def_nbr_left = Att_Terr.Soldats-Int(Att_Terr.Bateaux*Boat_Capacity)
@@ -970,7 +1055,7 @@ function Assault(World_Matrix,Att_Terr_Int::Int, Def_Terr_Int::Int)
 					Def_Terr.Bateaux = Def_Terr.Bateaux + Needed_Boats
 					Att_Terr.Bateaux = Att_Terr.Bateaux - Needed_Boats
 					Att_Terr.Soldats = Def_nbr_left
-					pr = "L'attaque a échoué : Les $Def_Trp ont réussi à défendre leur territoire! Il leur reste $Def_nbr_rest soldats sur leur territoire. Toutes les troupes des $Att_Trp sont tombées au combat... Seuls $Def_nbr_left soldats restent sur le territoire $Att_Terr_Int (manque de bâteaux)."
+					pr = "DÉFAITE...\n\nLes $Def_Trp ont réussi à défendre leur territoire! Il leur reste $Def_nbr_rest soldats sur leur territoire. Toutes les troupes des $Att_Trp sont tombées au combat... Seuls $Def_nbr_left soldats restent sur le territoire $Att_Terr_Int (manque de bâteaux).\n\nPERTES DE L'ATTAQUANT : $(Att_nbr-Att_nbr_rest)                               PERTES DU DEFENSEUR : $(Def_nbr-Def_nbr_rest)"
 				elseif Def_nbr_rest == 0 #Si l'attaque gagne
 					Att_Terr.Soldats = 1
 					Def_Terr.Troupe = Att_Trp
@@ -978,13 +1063,142 @@ function Assault(World_Matrix,Att_Terr_Int::Int, Def_Terr_Int::Int)
 					Def_Terr.Bateaux = Def_Terr.Bateaux + Needed_Boats
 					Att_Terr.Bateaux = Att_Terr.Bateaux - Needed_Boats
 					Att_Terr.Soldats = Def_nbr_left
-					pr = "L'attaque est un succès : Les $Att_Trp ont vaincu la défense des $Def_Trp, qui ont perdu toutes leurs troupes au combat ! Les $Att_Trp occupent donc maintenant le territoire numéro $Def_Terr_Int avec $(Att_nbr_rest-1) soldats. $Def_nbr_left soldats sont restés défendre le territoire $Att_Terr_Int (manque de bateaux)."
+					pr = "VICTOIRE !! \n\nLes $Att_Trp ont vaincu la défense des $Def_Trp, qui ont perdu toutes leurs troupes au combat ! Les $Att_Trp occupent donc maintenant le territoire numéro $Def_Terr_Int avec $(Att_nbr_rest-1) soldats. $Def_nbr_left soldats sont restés défendre le territoire $Att_Terr_Int (manque de bateaux).\n\nPERTES DE L'ATTAQUANT : $(Att_nbr-Att_nbr_rest)                               PERTES DU DEFENSEUR : $(Def_nbr-Def_nbr_rest)"
 				else
 					pr = "Erreur 404"
 				end
 			end
 		else pr = "Erreur : Compris qu'il y a port, mais pas trouvé de sous-conndition..."
 		end
+	end
+	return pr
+end
+
+# ╔═╡ 5882f6dc-0e89-418a-897b-921d233e74e8
+"""
+		Exchange_Ressources(World_Matrix,Actors_Matrix,Trp,Ress1,Ress2,Qty)
+	Cette fonction permet à une troupe d'échanger des ressources avec la trésorerie du royaume, en tenant compte de la valeur boursière des différentes ressources. Elle prend 6 arguments : 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs ;
+	- Le nom de la troupe qui souhaite effectuer l'échange ;
+	- Le type de ressource qu'elle souhaite vendre ;
+	- Le type de ressource qu'elle souhaite recvoir en échange ;
+	- La quantité de ressource qu'elle souhaite vendre.
+	Elle effectue toutes les modifications nécessaires dans le jeu, et retourne un message qui donne un feedback sur ce qu'elle a effectué.
+	"""
+function Exchange_Ressources(World_Matrix,Actors_Matrix,Trp::String,Ress1::String,Ress2::String,Qty)
+	Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+	Min_Disc_frac,Blé_Disc_frac,Bois_Disc_frac,Pir_Disc_frac = Give_Market_State(World_Matrix)
+	Bois_Start = Start_Ressources[1]
+	Pir_Start = Start_Ressources[2]
+	Blé_Start = Start_Ressources[3]
+	Min_Start = Start_Ressources[4]
+	if lowercase(Ress1) == "blé" && Trp_Strct.Blé ≥ Qty
+		if lowercase(Ress2) == "bois" 
+			alpha = Bois_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Bois_Disc_frac/Blé_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Blé -= Qty
+			Trp_Strct.Bois += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		elseif lowercase(Ress2) == "pierre"
+			alpha = Pir_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Pir_Disc_frac/Blé_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Blé -= Qty
+			Trp_Strct.Pierre += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		elseif lowercase(Ress2) == "minerais"
+			alpha = Min_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Min_Disc_frac/Blé_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Blé -= Qty
+			Trp_Strct.Minerais += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		end
+	elseif lowercase(Ress1) == "bois" && Trp_Strct.Bois ≥ Qty
+		if lowercase(Ress2) == "blé" 
+			alpha = Blé_Start/Bois_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Blé_Disc_frac/Bois_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Bois -= Qty
+			Trp_Strct.Blé += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		elseif lowercase(Ress2) == "pierre"
+			alpha = Pir_Start/Bois_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Pir_Disc_frac/Bois_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Bois -= Qty
+			Trp_Strct.Pierre += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		elseif lowercase(Ress2) == "minerais"
+			alpha = Min_Start/Bois_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Min_Disc_frac/Bois_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Bois -= Qty
+			Trp_Strct.Minerais += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		end
+	elseif lowercase(Ress1) == "pierre" && Trp_Strct.Pierre ≥ Qty
+		if lowercase(Ress2) == "blé" 
+			alpha = Blé_Start/Pir_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Blé_Disc_frac/Pir_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Pierre -= Qty
+			Trp_Strct.Blé += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		elseif lowercase(Ress2) == "bois"
+			alpha = Bois_Start/Pir_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Bois_Disc_frac/Pir_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Pierre -= Qty
+			Trp_Strct.Bois += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		elseif lowercase(Ress2) == "minerais"
+			alpha = Min_Start/Pir_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Min_Disc_frac/Pir_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Pierre -= Qty
+			Trp_Strct.Minerais += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		end
+	elseif lowercase(Ress1) == "minerais" && Trp_Strct.Minerais ≥ Qty
+		if lowercase(Ress2) == "blé" 
+			alpha = Blé_Start/Min_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Blé_Disc_frac/Min_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Minerais -= Qty
+			Trp_Strct.Blé += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		elseif lowercase(Ress2) == "bois"
+			alpha = Bois_Start/Min_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Bois_Disc_frac/Min_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Minerais -= Qty
+			Trp_Strct.Bois += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		elseif lowercase(Ress2) == "pierre"
+			alpha = Pir_Start/Min_Start #ce qu'elle reçoit/ce qu'elle donne
+			beta = Pir_Disc_frac/Min_Disc_frac
+			Taux = alpha*beta
+			Qty_got = alpha*beta*Qty
+			Trp_Strct.Minerais -= Qty
+			Trp_Strct.Pierre += Qty_got
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+		end
+	else
+		pr = "Échange impossible : vous n'avez pas assez de ressources"
 	end
 	return pr
 end
@@ -1110,6 +1324,45 @@ function Properties_Info(World_Matrix,Actors_Matrix,Troupe::String,field::String
 	return DDIICCTT
 end
 
+# ╔═╡ 02353a04-545f-4e79-b5b3-b93b441138ff
+"""
+		Show_Bourse_Info(World_Matrix)
+	Cette fonction sert à extraire les informations nécessaires sur la bourse pour l'affichage et l'écriture du document récapitulatif. Elle prend un seul argument : 
+	- Le vecteur qui contient tous les territoires composant le monde.
+
+	Elle retourne un vecteur de 4 `strings`, qui donnent ce qu'on obtiendrait de chause ressource si on l'échangeait contre 100 unités de blé.   
+	"""
+function Show_Bourse_Info(World_Matrix)
+	Min_Disc_frac,Blé_Disc_frac,Bois_Disc_frac,Pir_Disc_frac = Give_Market_State(World_Matrix)
+	Bois_Start = Start_Ressources[1]
+	Pir_Start = Start_Ressources[2]
+	Blé_Start = Start_Ressources[3]
+	Min_Start = Start_Ressources[4]
+	Qty = 100.00
+			
+	alpha_bois = Bois_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+	beta_bois = Bois_Disc_frac/Blé_Disc_frac
+	Taux_bois = alpha_bois*beta_bois
+	Qty_got_bois = round(Taux_bois*Qty*100)/100
+
+	alpha_pierre = Pir_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+	beta_pierre = Pir_Disc_frac/Blé_Disc_frac
+	Taux_pierre = alpha_pierre*beta_pierre
+	Qty_got_pierre = round(Taux_pierre*Qty*100)/100
+
+	alpha_minerais = Min_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+	beta_minerais = Min_Disc_frac/Blé_Disc_frac
+	Taux_minerais = alpha_minerais*beta_minerais
+	Qty_got_minerais = round(Taux_minerais*Qty*100)/100
+
+	pr1 = "Blé : 100"
+	pr2 = "Bois : $Qty_got_bois"
+	pr3 = "Pierre : $Qty_got_pierre"
+	pr4 = "Minerais : $Qty_got_minerais"
+
+	return [pr1,pr2,pr3,pr4]
+end
+
 # ╔═╡ f5019805-05db-4c60-b87b-de6f39ac5556
 md"""
 ### 7. Fonctions de sauvegarde
@@ -1118,35 +1371,68 @@ md"""
 # ╔═╡ 2e77c3fc-94bd-4dfe-a8b9-4302db6b85fb
 md"### 8. Fonctions \"`Execute()`\""
 
+# ╔═╡ ce1c8eb9-4ad7-4bb6-ac51-394cd187854a
+"""
+		Select_Catastrophee_Terr(World_Matrix,size)
+	Cette fonction sert à désigner les territoires qui subirtont une catastrophe. Elle prend deux arguments : 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le nombre de territoires par continent qui seront touchés pr la catstrophes. Les catstrophes s'appliquent à une certaine région donnée (territoires successifs)
+	Elle retourne une liste qui contient les numéros d'identité des territoires impliqués.
+	"""
+function Select_Catastrophee_Terr(World_Matrix,size)
+	Continents = [C1,C2,C3,C4,C5,C6]
+	Terrs = []
+	for i in 1:6
+		Terr = rand(Continents[i])
+		for j in 1:size
+			push!(Terrs,Terr+j)
+		end
+	end
+	return Terrs
+end
+
 # ╔═╡ 79b63986-ce3a-451e-be10-4bb90f76f93a
-md"### Notes Réunion 24 Mar 24
-- Fonction pour les catastrophes naturelles : to do
-- Carte espion : en réel
+md"### 9. Notes Réunions
+#### To do dernière réunion
+##### Code : 
 - Sauvegarde de la matrice à chaque tour .txt ou .xslx : to do
 - Garde royale : to do
-- Influence de la taille
-- Premier tour : conquêtes et pas entre nous. Donc premier jour, démogr important
 - Problème fonction affichage multiple : soldats obligatoires
-- Adapter le nombre d'autochtones à l'intérêt du territoire : fleuves, côtes
-- Echange de ressources
-- Ajouter ports sur terr de base
-- Noter les pertes (MEE)
-- Augmenter le prix des constructions
-- Capitale autochtones : 1 par cont 17 autochtones, full bâtiments, 
 - Fonction de transfert de ressources (pour payage)
-- Pas de repassage par le centre
-- Bâteaux n'ont pas servi : acheter des bâteaux 
 - Acheter soldats pour tour d'après, spawn au cont de départ
 - fonction de répartition équitable des soldtas sur les territoires
+- Si les territoires sont fluviaux : max 1 bateau. Si côtier : illimité. Si fluvial : plus de blé (eau douce, meilleures cultures)
+##### Pas code : 
+- Carte espion : en réel
+- Premier tour : conquêtes et pas entre nous. Donc premier jour, démogr important
+- Augmenter le prix des constructions
+- Pas de repassage par le centre
 - Countdown 
 - Usage des ressources : "
 
 # ╔═╡ 2d89b205-72d1-4a87-8d1a-1f5ad74704bf
-md""" ### Mises à jour
+md""" #### Mises à jour
 - Intégration de l'importance des ports et du nombre de bâteaux pour les voyages intercontinentaux (fonctions `Assault` et `Transfer_Troups`)
 - Changement du message d'attaque
 - Créations de fiches de situation pour les troupes
 - Etant donné les gains des ressources à chaque tour lors de l'expérience de jeu précédente, il m'a semblé que 100 était un coefficient suffisamment grand pour les ressources (200 c'est trop)
+- Changement des messages de victoire/défaite lors des attaques
+- Tailles des territoires prises en compte dans les rentes
+- Le marché est intégré : les échanges de ressources troupe-royaume sont possibles et sont régulés par la bourse (formules des resp du pouv éco). Décision : pas d'échnage troupe-troupe (car doublon, et augmente la complexité du jeu et la durée d'un tour.)
+- Il y a maintenant dès le départ un Port et 3 bateaux sur chaque territoire de l'îlot central
+- Territoires fluviaux ajoutés
+- Modification des nombres d'autochtones sur les territoires à la base
+- Le nombre d'autochtones par territoire a été revu (à la hausse en moyenne). Il dépend maintenant de la taille du territoire, de s'il est côtier ou pas, etc
+- Pour pallier cette hausse, les troupes commencent toutes le jeu avec 50 soldats au lieu de 30
+- Fonction worldfiller modifiée
+- Catastrophes introduites : incendies, tremblements de terre, pluies tropicales (intégrées à new turn : à faire avant la convoc des scouts)
+"""
+
+# ╔═╡ 663892ec-07d8-4237-b942-1d3bc6aed9ce
+md"""
+### To do prochaine réunion
+- Concrétiser pour le démographique (achat de matériel, description précise de chaque épreuve + de chaque défi à faire dans le cadre des autres actis du camp)
+- Cartes espion : réaliser. Si une troupe l'achète, elle reçoit le bundle d'une autre troupe au choix
 """
 
 # ╔═╡ 018f1d80-9fbc-4d36-a41e-319c86511b76
@@ -1154,12 +1440,160 @@ md"## PARTIE B - INTERFACE DE JEU"
 
 # ╔═╡ ce6b11f9-8230-4076-8135-12df833d4a82
 begin
-	World = World_Generator(236) #Génère un monde vide
-	Troupes = Actors_Generators() #Génère toutes les troupes
-	Temporary_WorldFiller(World,Troupes) #Simule une simulation de partie en cours
-	Update_LonesSituation(World,Troupes,"NoPrint") #Met à jour les avoirs de toutes les troupes
-	#World,Troupes = Start_Game()
+	#World = World_Generator(236) #Génère un monde vide
+	#Troupes = Actors_Generators() #Génère toutes les troupes
+	#Temporary_WorldFiller(World,Troupes) #Simule une simulation de partie en cours
+	#Update_LonesSituation(World,Troupes,"NoPrint") #Met à jour les avoirs de toutes les troupes
+	World,Troupes = Start_Game()
+	World,Troupes = Temporary_WorldFiller(World,Troupes)
 	nothing
+end
+
+# ╔═╡ 4c2b42f0-2c6c-40e0-baf1-c6ea489f6a26
+#Démo
+let
+	Mat = []
+	for element in World
+		if element.CaseID>1
+			push!(Mat,element.Soldats)
+		end
+	end
+	std(Mat)
+end
+
+# ╔═╡ 2811036d-a050-4b7b-8d9e-5d6a67aacc38
+"""
+		Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
+	Cette fonction sert à appliquer une catstrophe sur le monde. Elle prend 3 arguments : 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs ;
+	- Le nom de la castrophe qui doit être appliquée.
+	Elle retourne, par facilité, les identités des territoires touchés. Elle effectue toutes les modifications nécessaires dans le jeu et génère les fichiers .txt nécessaires pour le rapport. Ce rapport peut par la suite être obtenu en exécutant dans l'ordre les fonctions `Catastrophee_reporter.py` et `Catastrophee_report_docx.py`
+	"""
+function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
+	#Sauver l'état initial dans l'ordinateur
+	for element in Actors_Matrix[1:10]
+		chem = "./Catastrophes/Sit_Pro_Cata_$(element.Nom).txt"
+		fichier = open(chem,"w")
+		write(fichier,"$(element.Territoires)\n")
+		write(fichier,"$(element.Soldats)\n")
+		write(fichier,"$(element.Bateaux)\n")
+		write(fichier,"$(element.Minerais)\n")
+		write(fichier,"$(element.Blé)\n")
+		write(fichier,"$(element.Bois)\n")
+		write(fichier,"$(element.Pierre)\n")
+		close(fichier)
+	end
+	if lowercase(Cat_Type) == "tropical rains"
+		Impacted_Terrs = Select_Catastrophee_Terr(World_Matrix,20)
+		for element in World_Matrix
+			if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones"
+				Trp = element.Troupe
+				Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+				if element.IsFluvial == true
+					element.Port = false
+					element.Bateaux = 0
+					if element.Soldats > 10
+						element.Soldats -= 2
+					elseif element.Soldats > 5
+						element.Soldats -=1
+					end
+					Trp_Strct.Blé -= 2*element.Blé
+					Trp_Strct.Bois -= element.Bois/2
+				else
+					Trp_Strct.Blé -= element.Blé
+				end
+				if element.Soldats == 0
+				 element.Troupe = "Autochtones"
+			 	end
+			end
+		end
+		Mess = "Chers Lones, \n Votre souverain vous adresse des nouvelles bien sombres. Ce matin, un émissaire est arrivé à la capitale pour me rapporter des pluies torrentielles qui se sont abattues sur certaines de nos provinces. Les champs de blé ont été dévastés à de nombreux endroits, et la situation est encore plus critique pour les territoires riverains : des crues dévastatrices ont emporté une grande partie des cultures et ont rendu bon nombre de nos forêts impraticables. Ces inondations ont été si violentes par moments que plusieurs soldats ont perdu la vie en tentant de protéger leurs biens et leurs proches. Mon émissaire a rédigé un rapport détaillant les pertes que vous avez subies, et que vous trouverez ci-dessous. Dans cette période critique, j'ai décidé de vous convoquer tous à la Capitale aujourd'hui à 15h00 pour discuter des mesures à prendre afin de rétablir nos conquêtes malgré ces épreuves. Je vous encourage à vous réunir avec vos conseillers internes pour préparer vos stratégies à l'avance, car le temps presse. Quoi qu'il advienne, soyez prêts... \n\nTerritoires touchés : $(Impacted_Terrs)"
+	elseif lowercase(Cat_Type) == "forest fires"
+		Impacted_Terrs = Select_Catastrophee_Terr(World_Matrix,10)
+		 for element in World_Matrix
+			 if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones"
+			 	Trp = element.Troupe
+				Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+				element.Ferme = false
+				element.Scierie = false
+				Trp_Strct.Blé -= 2*element.Blé
+				Trp_Strct.Bois -= 3*element.Blé
+				if element.Soldats > 10
+					element.Soldats -= 4
+				elseif element.Soldats > 5
+					element.Soldats -= 2
+				elseif element.Soldats > 0
+					element.Soldats -= 1
+				end
+				 if element.Soldats == 0
+					 element.Troupe = "Autochtones"
+				 end
+			 end
+		 end
+		Mess = "Chers Lones, \n Votre Roi vous adresse des nouvelles particulièrement douloureuses. Ce matin, un messager est arrivé à la capitale pour me rapporter des événements tragiques. Des incendies de forêt dévastateurs ont ravagé certains territoires de nos provinces durant la nuit. Les champs de blé et les forêts ont été sévèrement touchés, causant d'importantes pertes. Les flammes ont également englouti les fermes et les scieries des régions touchées, entraînant la perte de nombreux soldats pris au piège. Mon émissaire a dressé un rapport détaillé des pertes que vous avez subies, que vous trouverez ci-dessous. Face à cette situation critique, j'ai pris la décision de vous convoquer tous à la Capitale aujourd'hui à 15h00 afin de discuter des mesures à prendre pour surmonter ces épreuves et restaurer nos conquêtes. Je vous encourage vivement à vous réunir avec vos conseillers internes pour élaborer vos stratégies à l'avance, car chaque instant compte. Quoi qu'il advienne, soyez prêts...\n\nTerritoires touchés :\n$(Impacted_Terrs)"
+	elseif lowercase(Cat_Type) == "earthquakes"
+		Impacted_Terrs = Select_Catastrophee_Terr(World_Matrix,10)
+		 for element in World_Matrix
+			 if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones"
+			 	Trp = element.Troupe
+				Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+				element.Carrière = false
+				element.Mine = false
+				Trp_Strct.Minerais -= 3*element.Minerais
+				Trp_Strct.Pierre -= 2*element.Pierre
+				if element.Soldats > 10
+					element.Soldats -= 3
+				elseif element.Soldats > 5
+					element.Soldats -= 2
+				elseif element.Soldats > 0
+					element.Soldats -= 1
+				end
+			 end
+			 if element.Soldats == 0
+				 element.Troupe = "Autochtones"
+			 end
+		 end
+		Mess = "Chers Lones,\nC'est avec une profonde angoisse que je vous adresse une fois de plus la parole aujourd'hui. Malheureusement, nos terres ont été secouées par des forces incontrôlables. Ce matin, les nouvelles sont arrivées à la capitale, annonçant des tremblements de terre dévastateurs. Les mines et les carrières à travers les territoires touchés sont désormais en ruines, nous laissant calculer le coût en pierres précieuses et en minerais. De plus, nous sommes attristés par la perte de nos soldats qui, dans leurs heures de loisir, travaillaient dans les sous-terrains et ont péri dans les décombres. Dans le sillage de cette tragédie, je vous appelle tous à vous rassembler à la Capitale à 15h00 aujourd'hui. Ensemble, nous devons tracer une voie à suivre dans ces moments troublés. Je vous encourage à nouveau à vous réunir avec vos conseillers internes pour élaborer vos stratégies à l'avance, car nous n'avons pas de temps à perdre. Quels que soient les défis à venir, soyons prêts à y faire face...\n\nTerritoires touchés :\n$(Impacted_Terrs)"
+	end
+	# Eviter que les troupes passent en négatif niveau ressources
+	for element in Actors_Matrix
+		if element.Blé < 0
+			element.Blé = 0
+		end
+		if element.Bois < 0
+			element.Bois = 0
+		end
+		if element.Pierre < 0
+			element.Pierre = 0
+		end
+		if element.Minerais < 0
+			element.Minerais = 0
+		end
+	end
+	# Sauver l'état Post-Cata
+	Update_LonesSituation(World,Troupes,"NoPrint")
+	for element in Actors_Matrix[1:10]
+		chem = "./Catastrophes/Sit_Post_Cata_$(element.Nom).txt"
+		fichier = open(chem,"w")
+		write(fichier,"$(element.Territoires)\n")
+		write(fichier,"$(element.Soldats)\n")
+		write(fichier,"$(element.Bateaux)\n")
+		write(fichier,"$(element.Minerais)\n")
+		write(fichier,"$(element.Blé)\n")
+		write(fichier,"$(element.Bois)\n")
+		write(fichier,"$(element.Pierre)\n")
+		close(fichier)
+	end
+	#Sauver le message du Roi
+	date_du_jour = Dates.today()
+	date_formattee = Dates.format(date_du_jour, "dd-mm-yyyy")
+	chem = "./Catastrophes/King_Message.txt"
+	fichier = open(chem,"w")
+	write(fichier,"JEU PERMANENT GCU 2024\nCONVOCATION À LA CAPITALE\nEn date du $date_formattee, à 15h00","\n\n")
+	write(fichier,"$Mess")
+	close(fichier)
+	return Impacted_Terrs
 end
 
 # ╔═╡ 166ba06c-8fda-44a1-8d83-2c8bd90e3433
@@ -1176,6 +1610,7 @@ function Save_Trp_Info(World_Matrix,Actors_Matrix,Trp::String)
 	Trp_Strct = Find_Troup(Trp,Actors_Matrix)
 	Prp = Properties(World_Matrix,Trp)
 	LonesInfo = Update_LonesSituation(World_Matrix,Actors_Matrix,"NoPrint")
+	Market_Info = Show_Bourse_Info(World_Matrix)
 	date_du_jour = Dates.today()
 	date_formattee = Dates.format(date_du_jour, "dd-mm-yyyy")
 	#WRITING FILE
@@ -1188,6 +1623,14 @@ function Save_Trp_Info(World_Matrix,Actors_Matrix,Trp::String)
 	write(fichier,"- Nombre : $(Trp_Strct.Territoires)\n- Numéros d'identité : $(Prp[:])\n\n")
 	write(fichier,"Armée :\n- Nombre de soldats : $(Trp_Strct.Soldats)\n- Nombre de bateaux : $(Trp_Strct.Bateaux)\n\n")
 	write(fichier,"Ressources :\n- Minerais : $(Trp_Strct.Minerais)\n- Blé : $(Trp_Strct.Blé)\n- Bois : $(Trp_Strct.Bois)\n- Pierre : $(Trp_Strct.Pierre)\n\n")
+
+
+	write(fichier,"État du marché (valeurs de conversion de 100 unités de blé) :\n")
+	for element in Market_Info
+		write(fichier,element,"\n")
+	end
+	write(fichier,"\n")
+	
 	#Terr info
 	write(fichier,"2. DETAILS DES TERRITOIRES : \n\n")
 	for element in Prp
@@ -1218,12 +1661,28 @@ end
 		Generate_All_txt(World_Matrix,Actors_Matrix)
 	Cette fonction exécute la fonction `Save_Trp_Info(World_Matrix,Actors_Matrix,Trp)` pour chacune des troupes, de sorte à stocker tous les fichiers `.txt` nécessaires. Elle prend deux arguments : 
 	- Le vecteur qui contient tous les territoires composant le monde ;
-	- Le vecteur qui contient tous les joueurs ;
+	- Le vecteur qui contient tous les joueurs.
 	Notez qu'un code python `Word_generator.py` a aussi été créé pour convertir les fichiers `.txt` en `.docx`, afin de faciliter la lecture des scouts. Ce code doit être indépendemment de ce notebook. Il est disponible sur `Github`.
 	"""
 function Generate_All_txt(World_Matrix,Actors_Matrix)
 	for element in Troupe_Names
 		Save_Trp_Info(World_Matrix,Actors_Matrix,element)
+	end
+end
+
+# ╔═╡ fc69d958-b5e0-45b8-bdcc-6ca858059fc0
+function Execute_BourseInfo()
+	try 
+		info_vec = Show_Bourse_Info(World)
+		with_terminal() do
+			println("État du marché (valeurs de conversion de 100 unités de blé) :")
+			println("-------------------------------------------------------------")
+			for element in info_vec
+				println(element)
+			end
+		end
+	catch
+		println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer votre transfert")
 	end
 end
 
@@ -1234,6 +1693,7 @@ md"""### AFFICHAGE
 	 $(@bind SitGen CheckBox()) Situation des troupes\
 	 $(@bind PropTerr CheckBox()) Caractéristiques d'un territoire\
 	 $(@bind PropTrp CheckBox()) Propriétés d'une troupe\
+	 $(@bind Market CheckBox()) État du marché\
 	"""
 
 # ╔═╡ 400579f3-b212-4902-b96e-8659c33245da
@@ -1346,6 +1806,8 @@ elseif PropTerr == true
 	Execute_TerrInfo()
 elseif PropTrp == true
 	Execute_Display_Properties_Info()
+elseif Market == true
+	Execute_BourseInfo()
 end
 
 # ╔═╡ 91a757ac-e56c-4228-8cff-fbd25fa27714
@@ -1358,6 +1820,7 @@ Sélectionnez ici l'action que le joueur souhaite exécuter :
  $(@bind Buy CheckBox()) Acheter un bâtiment et le placer sur un de ses territoire\
  $(@bind Salt CheckBox()) Acheter du sel avec des ressources\
  $(@bind Ass CheckBox()) Attaquer un territoire\
+ $(@bind Exc CheckBox()) Convertir des ressources\
 """
 
 # ╔═╡ 34d229fe-06af-4179-b44a-5c1208f86ff0
@@ -1460,6 +1923,21 @@ elseif Ass == true
 			""")
 		end
 	)
+elseif Exc == true
+	@bind Exc_Data PlutoUI.confirm(
+		PlutoUI.combine() do Child
+			@htl("""
+			<h3>Échange de ressources avec la trésorerie royale </h3>
+			
+			<ul>
+			$([
+				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+				for name in ["Troupe qui souhaite effectuer l'échange ","Type de ressource qu'on souhaite vendre ", "Quantité de cette ressource que l'on souhaite vendre ", "Type de ressource que l'on souhaite recevoir "]
+			])
+			</ul>
+			""")
+		end
+	)
 end
 
 # ╔═╡ 3b763c2f-83d8-4be6-9fb5-e6ce1881db52
@@ -1500,6 +1978,7 @@ end
 function Execute_NewTurn()
 	try
 		if lowercase(Mess_Turn) == "je confirme qu'un nouveau tour doit avoir lieu"
+			Apply_catastrophee(World,Troupes,rand(Catas))
 			New_Turn(World,Troupes)
 			pr = "Un nouveau tour a bien été effectué"
 		elseif Mess_Turn ≠ ""
@@ -1539,6 +2018,21 @@ function Execute_Assault()
 	end
 end
 
+# ╔═╡ 662471db-b727-4371-9efd-0f2d5e03e4be
+function Execute_Ressource_Exchange()
+	try
+		Trp = Exc_Data[1]
+		Ress1 = Exc_Data[2]
+		Qty = parse(Int64,Exc_Data[3])
+		Ress2 = Exc_Data[4]
+		pr = Exchange_Ressources(World,Troupes,Trp,Ress1,Ress2,Qty)
+		println(pr)
+	catch
+		pr = "Veuillez remplir les cases puis cliquer sur envoyer pour effectuer l'échange."
+		println(pr)
+	end
+end
+
 # ╔═╡ 3daf9148-39d2-493c-96be-307d1e402436
 if Buy == true
 	Execute_Buy()
@@ -1550,6 +2044,8 @@ elseif Salt == true
 	Execute_Ressource2Salt()
 elseif Ass == true
 	Execute_Assault()
+elseif Exc == true
+	Execute_Ressource_Exchange()
 end
 
 # ╔═╡ 0f158e7d-ac5f-4832-85a8-a1af5d822e62
@@ -1564,7 +2060,7 @@ if Save == true
 end
 
 # ╔═╡ Cell order:
-# ╠═c7e31109-3c17-4880-b870-6dd45eb29aa1
+# ╟─c7e31109-3c17-4880-b870-6dd45eb29aa1
 # ╟─b9b43e1a-fac4-403c-9bd7-02e9126f0ca8
 # ╟─27d48cc9-69bb-49f1-8290-ac821e6f77d9
 # ╟─9462050f-92ca-4c33-b1f8-afcc80ede3cf
@@ -1583,6 +2079,7 @@ end
 # ╟─000d6c33-dc9f-4ddb-8439-20d1a7a98d82
 # ╟─5ebd7c4e-6dba-44dc-b4fe-8fcaf4f5b09c
 # ╟─4e2210be-c52e-42b7-9bd8-3ed46e62a4e3
+# ╠═4c2b42f0-2c6c-40e0-baf1-c6ea489f6a26
 # ╟─28d3f46d-3258-4c9b-bffa-13d9f464cbd5
 # ╟─abd800af-4f8f-48bb-9588-f43c75957605
 # ╟─dc8eff81-5e94-4cb2-8e78-b822f307a120
@@ -1593,6 +2090,8 @@ end
 # ╟─6ed6bcf1-4b61-4adf-ae18-22959bac3f1f
 # ╟─57d50a15-7578-4348-bc38-5e4196bf26c6
 # ╟─085d3212-a58f-49e6-925c-2fd134ad8471
+# ╟─88bf0967-64e5-4e4d-a891-374f52093b92
+# ╟─ce1c8eb9-4ad7-4bb6-ac51-394cd187854a
 # ╟─2194282d-5203-4d1d-965e-b40469064624
 # ╟─f2a72f90-7841-4ccd-a09d-2c94f54476e8
 # ╟─3ffe698b-10f7-4164-93f5-d9338775cc74
@@ -1600,25 +2099,31 @@ end
 # ╟─49d6deec-8929-4e17-9ba7-a23cec4de568
 # ╟─554d8c87-8a34-4ca2-98ff-443dc8226381
 # ╟─3d3cc7ed-cf7a-4b4f-98e9-95359ad21cef
+# ╟─5882f6dc-0e89-418a-897b-921d233e74e8
+# ╟─2811036d-a050-4b7b-8d9e-5d6a67aacc38
 # ╟─d45625d4-9e8f-4724-941e-e9b514a27651
 # ╟─82ce8603-027a-4197-8d9e-d6c471e416ed
 # ╟─ac9c1cb6-78ad-4387-83c5-c83522f5bb6d
 # ╟─4a58cec4-778c-4594-ae25-2492acddc68b
 # ╟─15ccf590-a109-4e7f-aa5a-b756d6fccbe9
+# ╟─02353a04-545f-4e79-b5b3-b93b441138ff
 # ╟─f5019805-05db-4c60-b87b-de6f39ac5556
 # ╟─166ba06c-8fda-44a1-8d83-2c8bd90e3433
 # ╟─470479de-fd0c-4a93-826b-82665a9ede0b
 # ╟─2e77c3fc-94bd-4dfe-a8b9-4302db6b85fb
-# ╠═3b763c2f-83d8-4be6-9fb5-e6ce1881db52
-# ╠═1e15b72a-b0be-4045-961b-5e8de4cc9b4f
-# ╠═ca705873-8374-4baa-a4c4-65d1ccdb5698
-# ╠═a1b4005e-6e10-45ee-b018-6ff5c0a1a4a9
-# ╠═8bb403e2-83e7-49b7-8c3c-b0d6c97f4aed
-# ╠═31f0c518-740d-4d6b-be63-ee953d6f477b
-# ╠═ec047408-2525-4947-bc4c-2df0ac126c7e
-# ╠═3f554a7d-8d0c-4258-ab9e-2a88d41fdda1
-# ╠═79b63986-ce3a-451e-be10-4bb90f76f93a
+# ╟─3b763c2f-83d8-4be6-9fb5-e6ce1881db52
+# ╟─1e15b72a-b0be-4045-961b-5e8de4cc9b4f
+# ╟─ca705873-8374-4baa-a4c4-65d1ccdb5698
+# ╟─a1b4005e-6e10-45ee-b018-6ff5c0a1a4a9
+# ╟─8bb403e2-83e7-49b7-8c3c-b0d6c97f4aed
+# ╟─31f0c518-740d-4d6b-be63-ee953d6f477b
+# ╟─ec047408-2525-4947-bc4c-2df0ac126c7e
+# ╟─3f554a7d-8d0c-4258-ab9e-2a88d41fdda1
+# ╟─662471db-b727-4371-9efd-0f2d5e03e4be
+# ╟─fc69d958-b5e0-45b8-bdcc-6ca858059fc0
+# ╟─79b63986-ce3a-451e-be10-4bb90f76f93a
 # ╟─2d89b205-72d1-4a87-8d1a-1f5ad74704bf
+# ╟─663892ec-07d8-4237-b942-1d3bc6aed9ce
 # ╟─018f1d80-9fbc-4d36-a41e-319c86511b76
 # ╠═ce6b11f9-8230-4076-8135-12df833d4a82
 # ╟─a0406049-10c0-4b93-9f0e-ac7eebe6d979
