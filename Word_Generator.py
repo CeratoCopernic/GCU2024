@@ -1,6 +1,7 @@
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.shared import RGBColor
 import os
 
 def generate_word(init_path, output_folder):
@@ -44,6 +45,20 @@ def generate_word(init_path, output_folder):
         paragraphe.paragraph_format.space_after = Pt(0)  # Supprimer l'espacement après
         run = paragraphe.add_run(texte)
         run.bold = True
+    
+    def mettre_en_vert(texte):
+        paragraphe = doc.add_paragraph()
+        #paragraphe.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+        paragraphe.paragraph_format.space_after = Pt(0)  # Supprimer l'espacement après
+        run = paragraphe.add_run(texte)
+        run.font.color.rgb = RGBColor(0x00, 0x80, 0x00)
+
+    def mettre_en_rouge(texte):
+        paragraphe = doc.add_paragraph()
+        paragraphe.paragraph_format.space_after = Pt(0)  # Supprimer l'espacement après
+        run = paragraphe.add_run(texte)
+        run.font.color.rgb = RGBColor(0xFF, 0x00, 0x00)  # Couleur rouge
+
 
     # Ajouter le contenu du fichier texte au document Word
     for ligne in contenu:
@@ -55,7 +70,7 @@ def generate_word(init_path, output_folder):
             ajouter_paragraphe_centre(ligne.strip())
         elif ligne.startswith(("1.","2.","3.")):
             ajouter_sous_titre(ligne.strip())
-        elif ligne.startswith("Territoires possédés :") or ligne.startswith("Ressources :") or ligne.startswith("Armée :"):
+        elif ligne.startswith(("Territoires possédés :","Ressources :","Armée :","État du mar")):
             mettre_en_gras(ligne.strip())
         elif ligne.strip().isdigit():
             ajouter_sous_titre(ligne.strip())
@@ -63,6 +78,8 @@ def generate_word(init_path, output_folder):
             mettre_en_gras(ligne.strip())
         elif ligne.startswith(("SERV","HAR","ARCH","LANC","AUTOC","VAILL","PAL","TEMP","GUE","PRE","CHE")):
             mettre_en_gras(ligne.strip())
+        elif ligne.strip().endswith("Oui"):
+            mettre_en_vert(ligne.strip())
         else:
             ajouter_paragraphe_norm(ligne.strip())
 
@@ -88,3 +105,7 @@ for fichier in os.listdir(dossier_entree):
     if fichier.endswith(".txt"):
         chemin_fichier = os.path.join(dossier_entree, fichier)
         generate_word(chemin_fichier, dossier_sortie)
+
+in_pth = "/Users/alexandredemerode/Desktop/Jeu Perm - GCU 2024/Catastrophes/General_Report.txt"
+out_doss = "/Users/alexandredemerode/Desktop/Jeu Perm - GCU 2024/Catastrophes"
+generate_word(in_pth,out_doss)
