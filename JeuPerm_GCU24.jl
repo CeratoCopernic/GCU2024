@@ -134,10 +134,10 @@ begin
 	const Mine_Cost = [90 100 0 0]
 	const Saw_Cost = [90 100 0 0]
 	const Carr_Cost = [90 100 0 0]
-	const Boat_Cost = [200 0 0 15]
+	const Boat_Cost = [400 0 0 5]
 	const Sold_Cost = [0 0 0 10]
 	const SoldEntr_Cost = [0 0 10 0]
-	const Port_Cost = [150 300 0 0]
+	const Port_Cost = [400 600 0 30]
 	const Start_Ressources = [1100 1100 1500 100]
 	const Troupe_Names = ["Archers", "Hardis", "Paladins","Lanciers","Gueux","Preux","Vaillants","Chevaliers","Templiers","Servants","Autochtones"]
 	const Catas = ["tropical rains","earthquakes","forest fires"]
@@ -285,8 +285,8 @@ function Start_Game()
 	for i in collect(1:10)
 		Base_Terr = World_Matrix[247-i]
 		Base_Terr.Troupe = Actors_Matrix[i].Nom
-		Base_Terr.Soldats = 30
-		Base_Terr.Bateaux = 3
+		Base_Terr.Soldats = 50
+		Base_Terr.Bateaux = 5
 		Base_Terr.Port = true
 	end
 	#Nombre d'autochtones
@@ -528,6 +528,8 @@ function Is_SameContinent(World_Matrix,Terr1::Int,Terr2::Int)
 	Cont1 = 0
 	if Terr1 in C1
 		Cont1 = "C1"
+	elseif Terr1 in C0
+		Cont1 = "C0"
 	elseif Terr1 in C2
 		Cont1 = "C2"
 	elseif Terr1 in C3
@@ -535,11 +537,9 @@ function Is_SameContinent(World_Matrix,Terr1::Int,Terr2::Int)
 	elseif Terr1 in C4
 		Cont1 = "C4"
 	elseif Terr1 in C5
-		Cont = "C5"
+		Cont1 = "C5"
 	elseif Terr1 in C6
 		Cont1 = "C6"
-	elseif Terr1 in C6
-		Cont1 = "C0"
 	elseif Terr1 in I1
 		Cont1 = "I1"
 	elseif Terr1 in I2
@@ -554,6 +554,8 @@ function Is_SameContinent(World_Matrix,Terr1::Int,Terr2::Int)
 		
 	if Terr2 in C1
 		Cont2 = "C1"
+	elseif Terr2 in C0
+		Cont2 = "C0"
 	elseif Terr2 in C2
 		Cont2 = "C2"
 	elseif Terr2 in C3
@@ -564,8 +566,6 @@ function Is_SameContinent(World_Matrix,Terr1::Int,Terr2::Int)
 		Cont2 = "C5"
 	elseif Terr2 in C6
 		Cont2 = "C6"
-	elseif Terr2 in C6
-		Cont2 = "C0"
 	elseif Terr2 in I1
 		Cont2 = "I1"
 	elseif Terr2 in I2
@@ -1479,6 +1479,156 @@ md"""
 ### 7. Fonctions de sauvegarde
 """
 
+# ╔═╡ 166ba06c-8fda-44a1-8d83-2c8bd90e3433
+"""
+			Save_Trp_Info(World_Matrix,Actors_Matrix,Trp::String)
+	Cette fonction sert à sauvegarder les informations d'une troupe après un tour. Elle prend 3 arguments :  
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs ;
+	- Le nom de la troupe dont on souhaite traiter les informations ; 
+	Elle crée un fichier `.txt` qu'elle stocke dans le dossier `Messages` du dossier du `Jeu Permanent` sur l'ordinateur. Attention : l'utilisateur du code doit donc avoir créé un tel dossier sur son ordinateur (ou modifier le chemin à sa guise pour que ça fonctionne comme il le souhaite). 
+		"""
+function Save_Trp_Info(World_Matrix,Actors_Matrix,Trp::String)
+	TRP = uppercase(Trp)
+	Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+	Prp = Properties(World_Matrix,Trp)
+	LonesInfo = Update_LonesSituation(World_Matrix,Actors_Matrix,"NoPrint")
+	Market_Info = Show_Bourse_Info(World_Matrix)
+	date_du_jour = Dates.today()
+	date_formattee = Dates.format(date_du_jour, "dd-mm-yyyy")
+	#WRITING FILE
+	chem = "./Messages/Situation_$Trp.txt"
+	fichier = open(chem,"w")
+	write(fichier,"JEU PERMANENT GCU 2024\nFICHE RÉCAPITULATIVE - $TRP\nMise à jour du $date_formattee","\n\n")
+	#Gen info
+	write(fichier,"1. INFORMATIONS GENERALES :\n\n")
+	write(fichier, "Territoires possédés :\n")
+	write(fichier,"- Nombre : $(Trp_Strct.Territoires)\n- Numéros d'identité : $(Prp[:])\n\n")
+	write(fichier,"Armée :\n- Nombre de soldats : $(Trp_Strct.Soldats)\n- Nombre de bateaux : $(Trp_Strct.Bateaux)\n\n")
+	write(fichier,"Ressources :\n- Minerais : $(Trp_Strct.Minerais)\n- Blé : $(Trp_Strct.Blé)\n- Bois : $(Trp_Strct.Bois)\n- Pierre : $(Trp_Strct.Pierre)\n\n")
+
+
+	write(fichier,"État du marché (valeurs de conversion de 100 unités de blé) :\n")
+	for element in Market_Info
+		write(fichier,element,"\n")
+	end
+	write(fichier,"\n")
+	
+	#Terr info
+	write(fichier,"2. DETAILS DES TERRITOIRES : \n\n")
+	for element in Prp
+		IF = Terr_Info(World_Matrix,element)
+		for element in IF
+			write(fichier,element,"\n")
+		end
+		write(fichier,"\n")
+	end
+	#Info autres troupes
+	write(fichier,"3. INFORMATTIONS SUR LES AUTRES TROUPES : \n\n")
+	for element in LonesInfo
+		write(fichier,"$(uppercase(element.Nom)) :\n")
+		write(fichier,"Nombre de territoires : $(element.Territoires)\n")
+		write(fichier,"Nombre de soldats : $(element.Soldats)\n")
+		write(fichier,"Nombre de bateaux : $(element.Bateaux)\n")
+		write(fichier,"Quantité de minerais : $(element.Minerais)\n")
+		write(fichier,"Quantité de blé : $(element.Blé)\n")
+		write(fichier,"Quantité de bois : $(element.Bois)\n")
+		write(fichier,"Quantité de Pierre : $(element.Pierre)\n")
+		write(fichier,"\n")
+	end
+	close(fichier)
+end
+
+# ╔═╡ 470479de-fd0c-4a93-826b-82665a9ede0b
+"""
+		Generate_All_txt(World_Matrix,Actors_Matrix)
+	Cette fonction exécute la fonction `Save_Trp_Info(World_Matrix,Actors_Matrix,Trp)` pour chacune des troupes, de sorte à stocker tous les fichiers `.txt` nécessaires. Elle prend deux arguments : 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs.
+	Notez qu'un code python `Word_generator.py` a aussi été créé pour convertir les fichiers `.txt` en `.docx`, afin de faciliter la lecture des scouts. Ce code doit être indépendemment de ce notebook. Il est disponible sur `Github`.
+	"""
+function Generate_All_txt(World_Matrix,Actors_Matrix)
+	for element in Troupe_Names
+		Save_Trp_Info(World_Matrix,Actors_Matrix,element)
+	end
+end
+
+# ╔═╡ 40c0eae6-51cb-4c34-bc50-d4d1de2b1086
+"""
+		Save_Game(World_Matrix::Vector{Any})
+	Cette fonction sert à sauvegarder l'état actuel du jeu. Elle prend un argument :
+	- Le vecteur qui contient tous les territoires composant le monde
+	Elle retourne un message de confirmation et génère un fichier `.txt` qui contient une sauvegarde du jeu. Ce fichier peut éventuellement être échangé par des chefs du SDT entre eux pour pouvoir relancer le jeu depuis différents ordinateurs, ou envoyés à Cerato pour qu'il puisse suivre l'état du jeu à distance ;-).
+	"""
+function Save_Game(World_Matrix::Vector{Any})
+    date_du_jour = Dates.today()
+    chem = "./Sauvegardes/Sauvegarde_$date_du_jour.txt"
+    open(chem, "w") do fichier
+        for element in World_Matrix
+            @printf(fichier, "%-10d %-10d %-10s %-10.2f %-10.2f %-10.2f %-10.2f %-10.2f %-10.2f %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n",
+                element.CaseID, element.Type, element.Troupe, element.Soldats, element.Bateaux, element.Minerais,
+                element.Blé, element.Bois, element.Pierre, element.Ferme, element.Scierie, element.Carrière,
+                element.Mine, element.Port, element.IsFluvial, element.IsCoast, element.IsMountains)
+        end
+    end
+end
+
+# ╔═╡ eafbff43-6241-42b2-a27f-1f2d68ed6415
+"""
+		Load_Game(file_path::String)
+	Cette fonction sert à uploader une sauvegarde du jeu. Elle prend un argument : 
+	- Le chemin vers le fichier de sauvegarde (généré préalablement par la fonction `Save_Game`).
+	Elle ne retourne rien, met permet de redémarrer le jeu depuis une suavegarde antérieure suite à un crash du programme ou si un changement d'ordinateurs est nécessaire de tours en tours.
+
+	**ATTENTION :** Cette fonction s'utilise au tout début de l'interface, dans une cellule de code cachée par défaut. Pour récupérer une suavegarde, il faut donc : 
+	1. Ouvrir la la première cellule (cachée par défaut) de la partie "PARTIE B - INTERFACE DE JEU"
+	2. Mettre cette cellule dans l'état suivant : 
+		begin
+			#Run the following if you want to restart the game
+			#World,Troupes = Start_Game()
+		
+			#Run the following command if you want to simulate a mid-game situation
+			#World,Troupes = Temporary_WorldFiller(World,Troupes)
+			
+			#Run the following if you want to recover abackup version of the game (adapt the name !)
+			World, Troupes = Load_Game("./Sauvegardes/Sauvegarde_2024-06-17.txt")
+			
+			md"Pour **récupérer une sauvegarde** ou **commencer une nouvelle partie**, veuillez modifier cette cellule. N'oubliez pas de sauvegarder la partie à la fin de chaque tour !"
+		end
+	En veillant bien sûr à adapter le nom du fichoer txt à la version du jeu qu'on souhaite uploader ! N'oubliez pas également de recacher la cellule par après, pour éviter de la refaire tourner par erreur ! (en la faisant retourner par erreur, la partie sera réinitialisée à l'état de la sauvegarde mentionnée, donc tous les changements effectués depuis lors seront perdus !)
+	"""
+function Load_Game(file_path::String)
+    World_Matrix = Vector{Any}()
+    open(file_path, "r") do fichier
+        for line in eachline(fichier)
+            fields = split(line)
+            territoire = Territoire(
+                parse(Int, fields[1]),
+                parse(Int, fields[2]),
+                fields[3],
+                parse(Float64, fields[4]),
+                parse(Float64, fields[5]),
+                parse(Float64, fields[6]),
+                parse(Float64, fields[7]),
+                parse(Float64, fields[8]),
+                parse(Float64, fields[9]),
+                parse(Bool, fields[10]),
+                parse(Bool, fields[11]),
+                parse(Bool, fields[12]),
+                parse(Bool, fields[13]),
+                parse(Bool, fields[14]),
+                parse(Bool, fields[15]),
+                parse(Bool, fields[16]),
+                parse(Bool, fields[17])
+            )
+            push!(World_Matrix, territoire)
+        end
+    end
+	_, Actors_Matrix = Start_Game()
+	Update_LonesSituation(World_Matrix,Actors_Matrix,"Noprint")
+    return World_Matrix, Actors_Matrix
+end
+
 # ╔═╡ 2e77c3fc-94bd-4dfe-a8b9-4302db6b85fb
 md"### 8. Fonctions \"`Execute()`\""
 
@@ -1486,7 +1636,6 @@ md"### 8. Fonctions \"`Execute()`\""
 md"### 9. Notes Réunions
 #### To do dernière réunion
 ##### Code : 
-- Sauvegarde de la matrice à chaque tour .txt ou .xslx : to do
 - Garde royale : to do
 - Problème fonction affichage multiple : soldats obligatoires
 - Fonction de transfert de ressources (pour payage)
@@ -1500,7 +1649,7 @@ md"### 9. Notes Réunions
 - Usage des ressources : "
 
 # ╔═╡ 2d89b205-72d1-4a87-8d1a-1f5ad74704bf
-md""" #### Mises à jour
+md""" #### Mises à jour du 07 MAY 24
 - Intégration de l'importance des ports et du nombre de bateaux pour les voyages intercontinentaux (fonctions `Assault` et `Transfer_Troups`)
 - Changement du message d'attaque
 - Créations de fiches de situation pour les troupes
@@ -1517,6 +1666,9 @@ md""" #### Mises à jour
 - Catastrophes introduites : incendies, tremblements de terre, pluies tropicales (intégrées à new turn : à faire avant la convoc des scouts)
 - Fonction `Spread_Troups` : permet la répartition équitable de soldats sur plusieurs territoires
 - Achat de soldats/bateaux possibles en masse. Spawn au point de départ.
+
+#### Mises à jour 28 JUN 24
+- Fonction de sauvegarde opérationnelle (bien expliquer !)
 """
 
 # ╔═╡ 663892ec-07d8-4237-b942-1d3bc6aed9ce
@@ -1524,6 +1676,8 @@ md"""
 ### To do prochaine réunion
 - Concrétiser pour le démographique (achat de matériel, description précise de chaque épreuve + de chaque défi à faire dans le cadre des autres actis du camp)
 - Cartes espion : réaliser. Si une troupe l'achète, elle reçoit le bundle d'une autre troupe au choix
+- Fonction achat : vérifier le solde des troupes
+- Catastrophes +locales, mais à chaque tours
 """
 
 # ╔═╡ 018f1d80-9fbc-4d36-a41e-319c86511b76
@@ -1531,26 +1685,32 @@ md"## PARTIE B - INTERFACE DE JEU"
 
 # ╔═╡ ce6b11f9-8230-4076-8135-12df833d4a82
 begin
-	#World = World_Generator(236) #Génère un monde vide
-	#Troupes = Actors_Generators() #Génère toutes les troupes
-	#Temporary_WorldFiller(World,Troupes) #Simule une simulation de partie en cours
-	#Update_LonesSituation(World,Troupes,"NoPrint") #Met à jour les avoirs de toutes les troupes
-	World,Troupes = Start_Game()
-	World,Troupes = Temporary_WorldFiller(World,Troupes)
-	nothing
+	#Run the following if you want to restart the game
+	#World,Troupes = Start_Game()
+
+	#Run the following command if you want to simulate a mid-game situation
+	#World,Troupes = Temporary_WorldFiller(World,Troupes)
+	
+	#Run the following if you want to recover abackup version of the game (adapt the name !)
+	World, Troupes = Load_Game("./Sauvegardes/Sauvegarde_2024-06-17.txt")
+	
+	md"Pour **récupérer une sauvegarde** ou **commencer une nouvelle partie**, veuillez modifier cette cellule. N'oubliez pas de sauvegarder la partie à la fin de chaque tour !"
 end
 
 # ╔═╡ 4c2b42f0-2c6c-40e0-baf1-c6ea489f6a26
+# ╠═╡ disabled = true
+#=╠═╡
 #Démo
 let
 	Mat = []
 	for element in World
-		if element.CaseID>1
+		if element.Type == 1
 			push!(Mat,element.Soldats)
 		end
 	end
-	std(Mat)
+	mean(Mat)
 end
+  ╠═╡ =#
 
 # ╔═╡ 2811036d-a050-4b7b-8d9e-5d6a67aacc38
 """
@@ -1685,80 +1845,6 @@ function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
 	write(fichier,"$Mess")
 	close(fichier)
 	return Impacted_Terrs
-end
-
-# ╔═╡ 166ba06c-8fda-44a1-8d83-2c8bd90e3433
-"""
-			Save_Trp_Info(World_Matrix,Actors_Matrix,Trp::String)
-	Cette focntion sert à sauvegarder les informations d'une troupe après un tour. Elle prend 3 arguments :  
-	- Le vecteur qui contient tous les territoires composant le monde ;
-	- Le vecteur qui contient tous les joueurs ;
-	- Le nom de la troupe dont on souhaite traiter les informations ; 
-	Elle crée un fichier `.txt` qu'elle stocke dans le dossier `Messages` du dossier du `Jeu Permanent` sur l'ordinateur. Attention : l'utilisateur du code doit donc avoir créé un tel dossier sur son ordinateur (ou modifier le chemin à sa guise pour que ça fonctionne comme il le souhaite). 
-		"""
-function Save_Trp_Info(World_Matrix,Actors_Matrix,Trp::String)
-	TRP = uppercase(Trp)
-	Trp_Strct = Find_Troup(Trp,Actors_Matrix)
-	Prp = Properties(World_Matrix,Trp)
-	LonesInfo = Update_LonesSituation(World_Matrix,Actors_Matrix,"NoPrint")
-	Market_Info = Show_Bourse_Info(World_Matrix)
-	date_du_jour = Dates.today()
-	date_formattee = Dates.format(date_du_jour, "dd-mm-yyyy")
-	#WRITING FILE
-	chem = "./Messages/Situation_$Trp.txt"
-	fichier = open(chem,"w")
-	write(fichier,"JEU PERMANENT GCU 2024\nFICHE RÉCAPITULATIVE - $TRP\nMise à jour du $date_formattee","\n\n")
-	#Gen info
-	write(fichier,"1. INFORMATIONS GENERALES :\n\n")
-	write(fichier, "Territoires possédés :\n")
-	write(fichier,"- Nombre : $(Trp_Strct.Territoires)\n- Numéros d'identité : $(Prp[:])\n\n")
-	write(fichier,"Armée :\n- Nombre de soldats : $(Trp_Strct.Soldats)\n- Nombre de bateaux : $(Trp_Strct.Bateaux)\n\n")
-	write(fichier,"Ressources :\n- Minerais : $(Trp_Strct.Minerais)\n- Blé : $(Trp_Strct.Blé)\n- Bois : $(Trp_Strct.Bois)\n- Pierre : $(Trp_Strct.Pierre)\n\n")
-
-
-	write(fichier,"État du marché (valeurs de conversion de 100 unités de blé) :\n")
-	for element in Market_Info
-		write(fichier,element,"\n")
-	end
-	write(fichier,"\n")
-	
-	#Terr info
-	write(fichier,"2. DETAILS DES TERRITOIRES : \n\n")
-	for element in Prp
-		IF = Terr_Info(World,element)
-		for element in IF
-			write(fichier,element,"\n")
-		end
-		write(fichier,"\n")
-	end
-	#Info autres troupes
-	write(fichier,"3. INFORMATTIONS SUR LES AUTRES TROUPES : \n\n")
-	for element in LonesInfo
-		write(fichier,"$(uppercase(element.Nom)) :\n")
-		write(fichier,"Nombre de territoires : $(element.Territoires)\n")
-		write(fichier,"Nombre de soldats : $(element.Soldats)\n")
-		write(fichier,"Nombre de bateaux : $(element.Bateaux)\n")
-		write(fichier,"Quantité de minerais : $(element.Minerais)\n")
-		write(fichier,"Quantité de blé : $(element.Blé)\n")
-		write(fichier,"Quantité de bois : $(element.Bois)\n")
-		write(fichier,"Quantité de Pierre : $(element.Pierre)\n")
-		write(fichier,"\n")
-	end
-	close(fichier)
-end
-
-# ╔═╡ 470479de-fd0c-4a93-826b-82665a9ede0b
-"""
-		Generate_All_txt(World_Matrix,Actors_Matrix)
-	Cette fonction exécute la fonction `Save_Trp_Info(World_Matrix,Actors_Matrix,Trp)` pour chacune des troupes, de sorte à stocker tous les fichiers `.txt` nécessaires. Elle prend deux arguments : 
-	- Le vecteur qui contient tous les territoires composant le monde ;
-	- Le vecteur qui contient tous les joueurs.
-	Notez qu'un code python `Word_generator.py` a aussi été créé pour convertir les fichiers `.txt` en `.docx`, afin de faciliter la lecture des scouts. Ce code doit être indépendemment de ce notebook. Il est disponible sur `Github`.
-	"""
-function Generate_All_txt(World_Matrix,Actors_Matrix)
-	for element in Troupe_Names
-		Save_Trp_Info(World_Matrix,Actors_Matrix,element)
-	end
 end
 
 # ╔═╡ fc69d958-b5e0-45b8-bdcc-6ca858059fc0
@@ -2237,16 +2323,22 @@ end
 # ╔═╡ 0f158e7d-ac5f-4832-85a8-a1af5d822e62
 md"""### SAUVEGARDER LE JEU
 
+ $(@bind SaveGame CheckBox()) Enregistrer l'état actuel du jeu\
  $(@bind Save CheckBox()) Enregistrement des fiches résumées\
 """
 
 # ╔═╡ f88939de-cd71-4ac7-ad72-6f485029a5c1
 if Save == true
 	Generate_All_txt(World,Troupes)
+elseif SaveGame == true
+	date_du_jour = Dates.today()
+    chem = "./Sauvegardes/Sauvegarde_$date_du_jour.txt"
+	Save_Game(World)
+	print("Le jeu a bien été sauvegardé dans le fichier \"Sauvegarde_$date_du_jour.txt\", à l'intérieur du dossier \"Sauvegardes\"")
 end
 
 # ╔═╡ Cell order:
-# ╟─c7e31109-3c17-4880-b870-6dd45eb29aa1
+# ╠═c7e31109-3c17-4880-b870-6dd45eb29aa1
 # ╟─b9b43e1a-fac4-403c-9bd7-02e9126f0ca8
 # ╟─27d48cc9-69bb-49f1-8290-ac821e6f77d9
 # ╟─9462050f-92ca-4c33-b1f8-afcc80ede3cf
@@ -2255,7 +2347,7 @@ end
 # ╟─ba82811c-91b4-4355-97ce-ea731c2000c9
 # ╠═61fbec2c-1003-4ccf-a588-0f5b927226f1
 # ╟─4f4b516e-00c6-4dc3-aee3-7fb8c1a1b8cf
-# ╟─2bebe9c0-b5af-4336-825a-9add6581d21d
+# ╠═2bebe9c0-b5af-4336-825a-9add6581d21d
 # ╟─1d6eba18-9d51-4c96-975d-bdc9c5d2e861
 # ╟─60a165a8-4e65-4948-8fd7-d8c744051037
 # ╟─0b8cd34c-02e7-4559-a687-bc1a8f020ddf
@@ -2298,6 +2390,8 @@ end
 # ╟─f5019805-05db-4c60-b87b-de6f39ac5556
 # ╟─166ba06c-8fda-44a1-8d83-2c8bd90e3433
 # ╟─470479de-fd0c-4a93-826b-82665a9ede0b
+# ╟─40c0eae6-51cb-4c34-bc50-d4d1de2b1086
+# ╟─eafbff43-6241-42b2-a27f-1f2d68ed6415
 # ╟─2e77c3fc-94bd-4dfe-a8b9-4302db6b85fb
 # ╟─3b763c2f-83d8-4be6-9fb5-e6ce1881db52
 # ╟─8a577e66-9a7a-49e6-abbf-b0f615bab9ed
