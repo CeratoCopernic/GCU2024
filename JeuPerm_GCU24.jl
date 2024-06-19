@@ -24,7 +24,7 @@ begin
 	using Pluto
 	using Printf
 	#using SimpleDrawing
-	#using Plots
+	using Plots
 	#using Interact
 	using PrettyTables
 	#using Genie
@@ -90,7 +90,6 @@ mutable struct Territoire
 	Port::Bool
 	IsFluvial::Bool
 	IsCoast::Bool
-	IsMountains::Bool
 end
 
 # ╔═╡ ba82811c-91b4-4355-97ce-ea731c2000c9
@@ -112,6 +111,7 @@ mutable struct Troupe
 	Blé::Float64
 	Bois::Float64
 	Pierre::Float64
+	Sel::Float64
 end
 
 # ╔═╡ 4f4b516e-00c6-4dc3-aee3-7fb8c1a1b8cf
@@ -129,14 +129,13 @@ begin
 	const Coast = [1,2,3,4,5,6,11,10,16,22,23,28,27,31,30,26,25,24,29,19,18,17,12,32,33,34,35,36,37,40,43,51,52,54,60,67,68,71,72,74,73,70,64,65,66,58,59,49,50,48,42,39,75,76,77,78,79,80,81,82,83,84,87,106,107,103,102,104,105,100,97,93,92,88,89,90,99,96,94,91,85,86,108,109,110,111,113,114,115,124,127,133,134,135,144,153,154,151,150,149,157,156,155,146,145,136,137,128,116,158,159,160,161,162,163,164,165,166,171,180,187,190,189,188,185,184,183,182,175,176,172,168,167,191,192,193,194,195,196,201,205,214,223,222,230,233,232,228,227,231,226,225,224,215,207,206,202,234,235,236,237,238,239,240,241,242,243,244,245,246] #Liste des territoires côtiers
 	const Fluv = [108,109,117,116,119,128,137,136,138,145,146,150,151,141,142,132,143,131,134,135,133,172,178,177,179,180,174,173,170,171,215,224,216,208,209,210,218,211,212,203,97,95,94,93,91,24,19,25,14,15,9,16,21,22,28,23,20] #Liste des territoires en bordure de fleuve
 	const Capitals = [22,42,91,146,172,224]
-	const Mount = [] #Liste des territoires montagneux
 	const Farm_Cost = [90 100 0 0] #Ordre : Bois, Pierre, Blé, Minerais
 	const Mine_Cost = [90 100 0 0]
 	const Saw_Cost = [90 100 0 0]
 	const Carr_Cost = [90 100 0 0]
 	const Boat_Cost = [400 0 0 5]
 	const Sold_Cost = [0 0 0 10]
-	const SoldEntr_Cost = [0 0 10 0]
+	const SoldEntr_Cost = [0 0 7 0]
 	const Port_Cost = [400 600 0 30]
 	const Start_Ressources = [1100 1100 1500 100]
 	const Troupe_Names = ["Archers", "Hardis", "Paladins","Lanciers","Gueux","Preux","Vaillants","Chevaliers","Templiers","Servants","Autochtones"]
@@ -179,7 +178,7 @@ md"##### 3.1. Création du monde et des joueurs"
 function Actors_Generators()
 	Actors = []::Any
 	for element in Troupe_Names
-		push!(Actors,Troupe(element,0,0,0,0,0,0,0))
+		push!(Actors,Troupe(element,0,0,0,0,0,0,0,0))
 	end
 	return Actors
 end
@@ -221,23 +220,6 @@ function Coast_Terr(World_Mat,Terr_Mat)
 	end
 end
 
-# ╔═╡ 5ebd7c4e-6dba-44dc-b4fe-8fcaf4f5b09c
-"""
-		Mount_Terr(World_Mat,Terr_Mat)
-		
-	Cette fonction prend en arguments : 
-	- Le vecteur qui contient tous les territoires composant le monde ;
-	- Un vecteur qui contient tous les territoires qui se situent au pied d'une chaîne de montagnes
-	Donc une fois que cette fonctions a tourné, le programme saura quels territoires se trouvent au pied d'une chaîne de montagnes (leur field `IsMountains` vaudra `true`).
-	"""
-function Mount_Terr(World_Mat,Terr_Mat)
-	for Terr in World_Mat
-		if Terr.CaseID in Terr_Mat
-			Terr.IsMountains = true
-		end
-	end
-end
-
 # ╔═╡ 0b8cd34c-02e7-4559-a687-bc1a8f020ddf
 """
 		World_Generator(Nbr_Terr)
@@ -246,11 +228,10 @@ end
 function World_Generator(Nbr_Terr)
 	World_Matrix = []::Any
 	for i in 1:Nbr_Terr
-		push!(World_Matrix,Territoire(i,0,"Autochtones",0,0,0,0,0,0,false,false,false,false,false,false,false,false))
+		push!(World_Matrix,Territoire(i,0,"Autochtones",0,0,0,0,0,0,false,false,false,false,false,false,false))
 	end
 	Coast_Terr(World_Matrix,Coast)
 	Fluv_Terr(World_Matrix,Fluv)
-	Mount_Terr(World_Matrix,Mount)
 	return World_Matrix
 end
 
@@ -265,7 +246,6 @@ function Start_Game()
 	#Assignation des caractéristiques géographiques (cf. const)
 	Fluv_Terr(World_Matrix,Fluv)
 	Coast_Terr(World_Matrix,Coast)
-	Mount_Terr(World_Matrix,Mount)
 	#Assignations des rentes aux territoires (cf. const)
 	for i in 1:World_Size
 		World_Matrix[i].Minerais = Min_Val[i]
@@ -346,6 +326,21 @@ function Start_Game()
 	Actors_Matrix[11].Minerais = 1000*Start_Ressources[4]
 	return World_Matrix, Actors_Matrix
 end
+
+# ╔═╡ 4c2b42f0-2c6c-40e0-baf1-c6ea489f6a26
+# ╠═╡ disabled = true
+#=╠═╡
+#Démo
+let
+	Mat = []
+	for element in World
+		if element.Type == 1
+			push!(Mat,element.Soldats)
+		end
+	end
+	mean(Mat)
+end
+  ╠═╡ =#
 
 # ╔═╡ 28d3f46d-3258-4c9b-bffa-13d9f464cbd5
 md"##### 3.3. Création d'une situation de jeu fictive"
@@ -663,68 +658,105 @@ Nous avons à présent toutes les fonctions qui permettent de créer le monde et
 	"""
 function Add_Entity(World_Matrix,Actors_Matrix,Terr::Territoire, Entity::String)
 	Actor = Terr.Troupe
+	Actor_Strct = Find_Troup(Actor,Actors_Matrix)
 	ID = Terr.CaseID
 	Data = Assign_MilQties(World_Matrix,Actors_Matrix,Actor::String)
 	Cost = [0 0 0 0]
+	Trp_Fortuna = [Actor_Strct.Bois Actor_Strct.Pierre Actor_Strct.Blé Actor_Strct.Minerais]
+	Executable = false
 	if Entity == "Ferme"
-		if Terr.Ferme == false
-			Cost = Farm_Cost
-			Terr.Ferme = true
-			pr = "Achat effectué : Les $Actor ont construit une ferme sur le territoire n°$ID."
-		elseif Terr.Ferme == true
-			pr = "Achat non effectué : Le territoire contient déjà une ferme."
-			pr = "Achat effectué : Les $Actor ont construit une ferme sur le territoire n°$ID."
+		Cost = Farm_Cost
+		if all(Trp_Fortuna .>= Cost) == true
+			if Terr.Ferme == false
+				Terr.Ferme = true
+				Executable = true
+				pr = "Achat effectué : Les $Actor ont construit une ferme sur le territoire n°$ID."
+			elseif Terr.Ferme == true
+				pr = "Achat non effectué : Le territoire contient déjà une ferme."
+			end
+		else
+			pr = "Achat non effectué : Les $Actor n'ont pas assez de ressources pour acheter une ferme.\n\nCOÛT D'UNE FERME :                                 RESSOURCES DES $(uppercase(Actor)) :\nBlé : $(Cost[3])                                            Blé : $(round(Actor_Strct.Blé))\nBois : $(Cost[1])                                          Bois : $(round(Actor_Strct.Bois))\nPierre : $(Cost[2])                                       Pierre : $(round(Actor_Strct.Pierre))\nMinerais : $(Cost[4])                                       Minerais : $(round(Actor_Strct.Minerais))"
 		end
 	elseif Entity == "Scierie"
-		if Terr.Scierie == false
-			Cost = Saw_Cost
-			Terr.Scierie = true
-			pr = "Achat effectué : Les $Actor ont construit une scierie sur le territoire n°$ID."
-		elseif Terr.Scierie == true
-			pr = "Achat non effectué : Le territoire contient déjà une sciereie."
+		Cost = Saw_Cost
+		if all(Trp_Fortuna .>= Cost) == true
+			if Terr.Scierie == false
+				Terr.Scierie = true
+				Executable = true
+				pr = "Achat effectué : Les $Actor ont construit une scierie sur le territoire n°$ID."
+			elseif Terr.Scierie == true
+				pr = "Achat non effectué : Le territoire contient déjà une sciereie."
+			end
+		else
+			pr = "Achat non effectué : Les $Actor n'ont pas assez de ressources pour acheter une scierie.\n\nCOÛT D'UNE SCIERIE :                               RESSOURCES DES $(uppercase(Actor)) :\nBlé : $(Cost[3])                                            Blé : $(round(Actor_Strct.Blé))\nBois : $(Cost[1])                                          Bois : $(round(Actor_Strct.Bois))\nPierre : $(Cost[2])                                       Pierre : $(round(Actor_Strct.Pierre))\nMinerais : $(Cost[4])                                       Minerais : $(round(Actor_Strct.Minerais))"
 		end
 	elseif Entity == "Carrière"
-		if Terr.Carrière == false
-			Cost = Carr_Cost
-			Terr.Carrière = true
-			pr = "Achat effectué : Les $Actor ont construit une carrière sur le territoire n°$ID."
-		elseif Terr.Carrière == true
-			pr = "Achat non effectué : Le territoire contient déjà une carrière."
+		Cost = Carr_Cost
+		if all(Trp_Fortuna .>= Cost) == true
+			if Terr.Carrière == false
+				Terr.Carrière = true
+				Executable = true
+				pr = "Achat effectué : Les $Actor ont construit une carrière sur le territoire n°$ID."
+			elseif Terr.Carrière == true
+				pr = "Achat non effectué : Le territoire contient déjà une carrière."
+			end
+		else
+			pr = "Achat non effectué : Les $Actor n'ont pas assez de ressources pour acheter une carrière.\n\nCOÛT D'UNE CARRIÈRE :                              RESSOURCES DES $(uppercase(Actor)) :\nBlé : $(Cost[3])                                            Blé : $(round(Actor_Strct.Blé))\nBois : $(Cost[1])                                          Bois : $(round(Actor_Strct.Bois))\nPierre : $(Cost[2])                                       Pierre : $(round(Actor_Strct.Pierre))\nMinerais : $(Cost[4])                                       Minerais : $(round(Actor_Strct.Minerais))"
 		end
 	elseif Entity == "Mine"
-		if Terr.Mine == false
-			Cost = Mine_Cost
-			Terr.Mine = true
-			pr = "Achat effectué : Les $Actor ont construit une mine sur le territoire n°$ID."
-		elseif Terr.Mine == true
-			pr = "Achat non effectué : Le territoire contient déjà une mine."
+		Cost = Mine_Cost
+		if all(Trp_Fortuna .>= Cost) == true
+			if Terr.Mine == false
+				Terr.Mine = true
+				Executable = true
+				pr = "Achat effectué : Les $Actor ont construit une mine sur le territoire n°$ID."
+			elseif Terr.Mine == true
+				pr = "Achat non effectué : Le territoire contient déjà une mine."
+			end
+		else
+			pr = "Achat non effectué : Les $Actor n'ont pas assez de ressources pour acheter une mine.\n\nCOÛT D'UNE MINE :                                  RESSOURCES DES $(uppercase(Actor)) :\nBlé : $(Cost[3])                                            Blé : $(round(Actor_Strct.Blé))\nBois : $(Cost[1])                                          Bois : $(round(Actor_Strct.Bois))\nPierre : $(Cost[2])                                       Pierre : $(round(Actor_Strct.Pierre))\nMinerais : $(Cost[4])                                       Minerais : $(round(Actor_Strct.Minerais))"
 		end
 	elseif Entity == "Port"
-		if Terr.Port == false
-			Cost = Port_Cost
-			Terr.Port = true
-			pr = "Achat effectué : Les $Actor ont construit un port sur le territoire n°$ID."
-		elseif Terr.Port == true
-			pr = "Achat non effectué : Le territoire contient déjà un port."
+		Cost = Port_Cost
+		if all(Trp_Fortuna .>= Cost) == true
+			if Terr.Port == false
+				Terr.Port = true
+				Executable = true
+				pr = "Achat effectué : Les $Actor ont construit un port sur le territoire n°$ID."
+			elseif Terr.Port == true
+				pr = "Achat non effectué : Le territoire contient déjà un port."
+			end
+		else
+			pr = "Achat non effectué : Les $Actor n'ont pas assez de ressources pour acheter un port.\n\nCOÛT D'UN PORT :                                   RESSOURCES DES $(uppercase(Actor)) :\nBlé : $(Cost[3])                                            Blé : $(round(Actor_Strct.Blé))\nBois : $(Cost[1])                                         Bois : $(round(Actor_Strct.Bois))\nPierre : $(Cost[2])                                       Pierre : $(round(Actor_Strct.Pierre))\nMinerais : $(Cost[4])                                      Minerais : $(round(Actor_Strct.Minerais))"
 		end
 	elseif Entity == "Bateau"
 		Cost = Boat_Cost
-		Terr.Bateaux = Terr.Bateaux+1
-		pr = "Achat effectué : Les $Actor ont ajouté un bâteau sur le territoire n°$ID."
+		if all(Trp_Fortuna .>= Cost) == true
+			Terr.Bateaux = Terr.Bateaux+1
+			Executable = true
+			pr = "Achat effectué : Les $Actor ont ajouté un bâteau sur le territoire n°$ID."
+		else
+			pr = "Achat non effectué : Les $Actor n'ont pas assez de ressources pour acheter un bateau."
+		end
 	elseif Entity == "Soldat"
 		Cost = Sold_Cost
-		Terr.Soldats = Terr.Soldats+1
-		pr = "Achat effectué : Les $Actor ont ajouté un soldat sur le territoire n°$ID."
+		if all(Trp_Fortuna .>= Cost) == true
+			Terr.Soldats = Terr.Soldats+1
+			Executable = true
+			pr = "Achat effectué : Les $Actor ont ajouté un soldat sur le territoire n°$ID."
+		else
+			pr = "Achat non effectué : Les $Actor n'ont pas assez de ressources pour acheter un soldat."
+		end
 	end
 	#Ordre de la matrice Cost : Bois, Pierre, Blé, Minerais
-	Data.Bois = Data.Bois-Cost[1]
-	Data.Pierre = Data.Pierre-Cost[2]
-	Data.Blé = Data.Blé-Cost[3]
-	Data.Minerais = Data.Minerais-Cost[4]
+	if Executable == true
+		Data.Bois = Data.Bois-Cost[1]
+		Data.Pierre = Data.Pierre-Cost[2]
+		Data.Blé = Data.Blé-Cost[3]
+		Data.Minerais = Data.Minerais-Cost[4]
+	end
 	return pr
 end
-# Note : ne fait pour le moment rien si une entité bool existe déjà (with_terminal ne rend rien je dois réfléchir à ça)
-# Note : Pour le moment, aucune vérification n'est faite sur si oui ou non la troupe a assez d'argent pour acheter le territoire (à changer).
 
 # ╔═╡ f209d063-9403-4578-8fd8-f521f97089d6
 """
@@ -735,12 +767,13 @@ end
 	- La troupe qui souhaite effectuer l'achat ;
 	- L'unité qui doit être achetée (`"Soldat"` ou `"Bateau"`);
 	- La quantité d'unités à acheter
-	Elle effectue les changements nécessaires dans le jeu et retourne un message qui renseigne l'état de l'achat. Attention : elle ne vérifie pas encore que la troupe à assez d'argent (comme la fonction `Add_Entity`,d'ailleurs) : A CHANGER
+	Elle effectue les changements nécessaires dans le jeu et retourne un message qui renseigne l'état de l'achat.
 	"""
 function Add_Mil_Entities(World_Matrix,Actors_Matrix,Trp::String,Entity::String,Qty)
 	Trp_Strct = Find_Troup(Trp,Actors_Matrix)
 	Prp = Properties(World_Matrix,Trp)
 	Mat = []
+	Executable = true
 	for element in Prp
 		elm = Find_Terr(element,World_Matrix)
 		if elm.Type == 0
@@ -751,15 +784,28 @@ function Add_Mil_Entities(World_Matrix,Actors_Matrix,Trp::String,Entity::String,
 	imat = []
 	for i in 1:Qty
 		ppr = Add_Entity(World_Matrix,Actors_Matrix,Spawn_Terr,Entity)
-		push!(imat,i)
+		if startswith(ppr, "Achat effectué")
+			push!(imat,i)
+		else
+			Executable = false
+			break
+		end
 	end
+	
 	if Entity == "Soldat"
 		char = "s"
 	else
 		char = "x"
 	end
+	
 	effective_adds = length(imat)
-	pr = "Acchat effectué : Les $Trp ont acheté $effective_adds $(lowercase(Entity))$char. Ils se situent au port de la capitale, sur le territoire n°$(Spawn_Terr.CaseID)."
+	if effective_adds == 0
+		pr = "Achat non-effectué : les $Trp ne possèdent pas assez de ressources pour acheter des $(lowercase(Entity))$char."
+	elseif effective_adds < Qty
+		pr = "Achat partiellement effectué : les $Trp ne possédaient pas suffisemment de ressources pour l'achat de $Qty $(lowercase(Entity))$char. Seuls $effective_adds $(lowercase(Entity))$char ont donc été achetés. Ils se situent au port de la capitale, sur le territoire n°$(Spawn_Terr.CaseID)."
+	else
+		pr = "Achat effectué : Les $Trp ont acheté $effective_adds $(lowercase(Entity))$char. Ils se situent au port de la capitale, sur le territoire n°$(Spawn_Terr.CaseID)."
+	end
 	return pr
 end
 
@@ -805,8 +851,8 @@ function Transfer_Troups(World_Matrix,TerrInit::Territoire,TerrDest::Territoire,
 					if TerrInit.Soldats > Nbr
 						TerrInit.Soldats = TerrInit.Soldats-Nbr
 						TerrDest.Soldats = TerrDest.Soldats+Nbr
-						TerrInit.Bateaux = TerrInit.Bateaux-Used_Boats
-						TerrDest.Bateaux = TerrDest.Bateaux+Used_Boats
+						#TerrInit.Bateaux = TerrInit.Bateaux-Used_Boats
+						#TerrDest.Bateaux = TerrDest.Bateaux+Used_Boats
 						pr = "Transfert intercontinental effectué : $Nbr Soldats ont été transférés du territoire n°$Terr_it avec $Used_Boats bateau(x) vers le territoire n°$Terr_dt par les $Trp"
 					elseif TerrInit.Soldats == Nbr
 						pr = "Transfert impossible : vous devez au moins garder un soldat sur le territoire n°$(Terr_it) pour pouvoir l'occuper"
@@ -903,6 +949,7 @@ function Ressource2Salt(Actors_Matrix,Troupe::String,Ressource::String,Quantity)
 		Salt_obtnd = Quantity/100
 		if Trp.Blé >= Cost
 			Trp.Blé = Trp.Blé-Cost
+			Trp.Sel += Salt_obtnd
 			pr = "Les $Troupe viennent d'échanger $Quantity unités de blé contre $Salt_obtnd grammes de sel"
 		else
 			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
@@ -912,6 +959,7 @@ function Ressource2Salt(Actors_Matrix,Troupe::String,Ressource::String,Quantity)
 		Salt_obtnd = Quantity/100
 		if Trp.Pierre >= Cost
 			Trp.Pierre = Trp.Pierre-Cost
+			Trp.Sel += Salt_obtnd
 			pr = "Les $Troupe viennent d'échanger $Quantity unités de pierre contre $Salt_obtnd grammes de sel"
 		else
 			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
@@ -921,6 +969,7 @@ function Ressource2Salt(Actors_Matrix,Troupe::String,Ressource::String,Quantity)
 		Salt_obtnd = Quantity/100
 		if Trp.Minerais >= Cost
 			Trp.Minerais = Trp.Minerais-Cost
+			Trp.Sel += Salt_obtnd
 			pr = "Les $Troupe viennent d'échanger $Quantity unités de minerais contre $Salt_obtnd grammes de sel"
 		else
 			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
@@ -930,6 +979,7 @@ function Ressource2Salt(Actors_Matrix,Troupe::String,Ressource::String,Quantity)
 		Salt_obtnd = Quantity/100
 		if Trp.Bois >= Cost
 			Trp.Bois = Trp.Bois-Cost
+			Trp.Sel += Salt_obtnd
 			pr = "Les $Troupe viennent d'échanger $Quantity unités de bois contre $Salt_obtnd grammes de sel"
 		else
 			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
@@ -971,17 +1021,19 @@ end
 
 # ╔═╡ 554d8c87-8a34-4ca2-98ff-443dc8226381
 """
-		New_Turn(World_Matrix,Actors_Matrix)
+		New_Turn(World_Matrix,Actors_Matrix,SaltPerc)
 Cette fonction exécute un nouveau tour. Elle prend 2 arguments : 
 - Le vecteur qui contient tous les territoires composant le monde ;
 - Le vecteur qui contient tous les joueurs ;
-Elle ne retourne rien mais exécute les actions suivantes : 
+Elle retourne un texte qui informe de ;la quantité de sel qui doit être donnée à chaque troupe, et exécute les actions suivantes : 
 - Verse à chaque troupe les rentes de leurs territoires respectifs ;
-- Retire à chaque troupe la quantité de blé nécessaire pour entretenir son armée. Si la quantité de blé est insuffisante, la quantité de blé est mise à 0 et la troupe perd 1/3 de ses effectifs sur tous ses territoires (encore à implémenter : ne marche pas pour le moment). Une catastrophe naturelle se prouit à chaque tour. le rapports sont automatiquemet enregistrés dans le PC (moyennant l'exécution des deux codes Py)
+- Retire à chaque troupe la quantité de blé nécessaire pour entretenir son armée. Si la quantité de blé est insuffisante, la quantité de blé est mise à 0 et la troupe perd 1/3 de ses effectifs sur tous ses territoires (encore à implémenter : ne marche pas pour le moment). Une catastrophe naturelle se produit à chaque tour. le rapports sont automatiquemet enregistrés dans le PC (moyennant l'exécution des deux codes Py)
 	"""
 function New_Turn(World_Matrix,Actors_Matrix)
+	Salt_Info = []
 	for Trp in Actors_Matrix
 		Prop = Properties(World_Matrix,Trp.Nom)
+		Sizes = 0
 		for i = 1:size(Prop)[1]
 			CaseID = Prop[i]
 			Terr = World_Matrix[CaseID]
@@ -1005,7 +1057,18 @@ function New_Turn(World_Matrix,Actors_Matrix)
 			else
 				Trp.Minerais += (0.8+2*Terr.Type/10)*Terr.Minerais
 			end
+			Sizes += Terr.Type
+			if Terr.IsCoast == true 
+				Sizes += 0.7
+			end
+			if Terr.IsFluvial == true
+				Sizes += 0.3
+			end
 		end
+		Sizes = round(Sizes)
+		Trp.Sel += Sizes
+		ppr = "$(Trp.Nom) : $(2*Sizes) grammes de sel"
+		push!(Salt_Info, ppr)
 		Sold_Nbr = Trp.Soldats
 		Army_Cost = Sold_Nbr*SoldEntr_Cost[3]
 		if Trp.Blé >= Army_Cost
@@ -1026,9 +1089,9 @@ function New_Turn(World_Matrix,Actors_Matrix)
 			Terr.Soldats += 30
 		end
 	end
+	pr = "Le tour a bien été effectué. Une catastrophe naturelle a eu lieu et les rapports correspondant ont été générés. Les rentes de sel à verser sont les suivantes\n\n$(Salt_Info[1])\n$(Salt_Info[2])\n$(Salt_Info[3])\n$(Salt_Info[4])\n$(Salt_Info[5])\n$(Salt_Info[6])\n$(Salt_Info[7])\n$(Salt_Info[8])\n$(Salt_Info[9])\n$(Salt_Info[10])"
+	return pr
 end
-#Note : Prévoir une fonciton qui fait l'inverse en cas d'erreur de manip ? 
-#Note : Il ne se passe rien si la troupe passe en négatif à cause des soldats...
 
 # ╔═╡ 3d3cc7ed-cf7a-4b4f-98e9-95359ad21cef
 """
@@ -1206,112 +1269,128 @@ function Exchange_Ressources(World_Matrix,Actors_Matrix,Trp::String,Ress1::Strin
 	Min_Start = Start_Ressources[4]
 	if lowercase(Ress1) == "blé" && Trp_Strct.Blé ≥ Qty
 		if lowercase(Ress2) == "bois" 
-			alpha = Bois_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Bois_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Bois_Disc_frac/Blé_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Blé -= Qty
 			Trp_Strct.Bois += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		elseif lowercase(Ress2) == "pierre"
-			alpha = Pir_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Pir_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Pir_Disc_frac/Blé_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Blé -= Qty
 			Trp_Strct.Pierre += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		elseif lowercase(Ress2) == "minerais"
-			alpha = Min_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Min_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Min_Disc_frac/Blé_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Blé -= Qty
 			Trp_Strct.Minerais += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		end
 	elseif lowercase(Ress1) == "bois" && Trp_Strct.Bois ≥ Qty
 		if lowercase(Ress2) == "blé" 
-			alpha = Blé_Start/Bois_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Blé_Start/Bois_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Blé_Disc_frac/Bois_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Bois -= Qty
 			Trp_Strct.Blé += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		elseif lowercase(Ress2) == "pierre"
-			alpha = Pir_Start/Bois_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Pir_Start/Bois_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Pir_Disc_frac/Bois_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Bois -= Qty
 			Trp_Strct.Pierre += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		elseif lowercase(Ress2) == "minerais"
-			alpha = Min_Start/Bois_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Min_Start/Bois_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Min_Disc_frac/Bois_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Bois -= Qty
 			Trp_Strct.Minerais += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		end
 	elseif lowercase(Ress1) == "pierre" && Trp_Strct.Pierre ≥ Qty
 		if lowercase(Ress2) == "blé" 
-			alpha = Blé_Start/Pir_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Blé_Start/Pir_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Blé_Disc_frac/Pir_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Pierre -= Qty
 			Trp_Strct.Blé += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		elseif lowercase(Ress2) == "bois"
-			alpha = Bois_Start/Pir_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Bois_Start/Pir_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Bois_Disc_frac/Pir_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Pierre -= Qty
 			Trp_Strct.Bois += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		elseif lowercase(Ress2) == "minerais"
-			alpha = Min_Start/Pir_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Min_Start/Pir_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Min_Disc_frac/Pir_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Pierre -= Qty
 			Trp_Strct.Minerais += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		end
 	elseif lowercase(Ress1) == "minerais" && Trp_Strct.Minerais ≥ Qty
 		if lowercase(Ress2) == "blé" 
-			alpha = Blé_Start/Min_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Blé_Start/Min_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Blé_Disc_frac/Min_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Minerais -= Qty
 			Trp_Strct.Blé += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		elseif lowercase(Ress2) == "bois"
-			alpha = Bois_Start/Min_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Bois_Start/Min_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Bois_Disc_frac/Min_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Minerais -= Qty
 			Trp_Strct.Bois += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		elseif lowercase(Ress2) == "pierre"
-			alpha = Pir_Start/Min_Start #ce qu'elle reçoit/ce qu'elle donne
+			#alpha = Pir_Start/Min_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Pir_Disc_frac/Min_Disc_frac
-			Taux = alpha*beta
-			Qty_got = alpha*beta*Qty
+			#Taux = alpha*beta
+			Qty_got = beta*Qty
 			Trp_Strct.Minerais -= Qty
 			Trp_Strct.Pierre += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", Taux*100)
+			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
 		end
 	else
 		pr = "Échange impossible : vous n'avez pas assez de ressources"
 	end
 	return pr
+end
+
+# ╔═╡ 5aef7700-82be-4c8d-9837-f6ffce9f0dbb
+function Allocate_Ressources(World_Matrix, Actors_Matrix, Trp::String, Ressource::String, Qty)
+	Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+	if lowercase(Ressource) == "blé"
+		Trp_Strct.Blé += Qty
+	elseif lowercase(Ressource) == "bois"
+		Trp_Strct.Bois += Qty
+	elseif lowercase(Ressource) == "pierre"
+		Trp_Strct.Pierre += Qty
+	elseif lowercase(Ressource) == "minerais"
+		Trp_Strct.Minerais += Qty
+	elseif lowercase(Ressource) == "sel"
+		Trp_Strct.Sel += Qty
+	end
 end
 
 # ╔═╡ d45625d4-9e8f-4724-941e-e9b514a27651
@@ -1420,8 +1499,7 @@ function Properties_Info(World_Matrix,Actors_Matrix,Troupe::String,field::String
 			("mine", Structure.Mine),
 		    ("port", Structure.Port),
 		    ("isfluvial", Structure.IsFluvial),
-		    ("iscoast", Structure.IsCoast),
-		    ("ismountains", Structure.IsMountains)
+		    ("iscoast", Structure.IsCoast)
 		])
 		Info = Dico[f_field]
 		push!(Data,Info)
@@ -1451,20 +1529,20 @@ function Show_Bourse_Info(World_Matrix)
 	Min_Start = Start_Ressources[4]
 	Qty = 100.00
 			
-	alpha_bois = Bois_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+	#alpha_bois = Bois_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
 	beta_bois = Bois_Disc_frac/Blé_Disc_frac
-	Taux_bois = alpha_bois*beta_bois
-	Qty_got_bois = round(Taux_bois*Qty*100)/100
+	#Taux_bois = alpha_bois*beta_bois
+	Qty_got_bois = round(beta_bois*Qty*100)/100
 
-	alpha_pierre = Pir_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+	#alpha_pierre = Pir_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
 	beta_pierre = Pir_Disc_frac/Blé_Disc_frac
-	Taux_pierre = alpha_pierre*beta_pierre
-	Qty_got_pierre = round(Taux_pierre*Qty*100)/100
+	#Taux_pierre = alpha_pierre*beta_pierre
+	Qty_got_pierre = round(beta_pierre*Qty*100)/100
 
-	alpha_minerais = Min_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
+	#alpha_minerais = Min_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
 	beta_minerais = Min_Disc_frac/Blé_Disc_frac
-	Taux_minerais = alpha_minerais*beta_minerais
-	Qty_got_minerais = round(Taux_minerais*Qty*100)/100
+	#Taux_minerais = alpha_minerais*beta_minerais
+	Qty_got_minerais = round(beta_minerais*Qty*100)/100
 
 	pr1 = "Blé : 100"
 	pr2 = "Bois : $Qty_got_bois"
@@ -1473,6 +1551,43 @@ function Show_Bourse_Info(World_Matrix)
 
 	return [pr1,pr2,pr3,pr4]
 end
+
+# ╔═╡ 0610f156-775c-4f71-8d28-c284770dabf2
+"""
+		Show_Salt_Info(Actors_Matrix)
+	Cette fonction affiche et enregistre localement un graphe qui représente le classement général du jeu permanent. Elle prend un seul argument : 
+	- Le vecteur qui contient tous les territoires composant le monde.
+	Elle retourne une image de la situation qu'lle montre dans le notebook et qu'elle enregistre dans l'ordinateur dans le dossier Word. L'image peut donc être imprimée à chaque tour et être jointe aux dossiers
+	"""
+function Show_Salt_Info(Actors_Matrix)
+    Salt_Dict = Dict()
+    Surnames_Dict = Dict("Archers" => "ARCH", "Chevaliers" => "CHEUX", "Gueux" => "GUEUX", "Hardis" => "HARD", "Lanciers" => "LANC", "Paladins" => "PALAS", "Preux" => "PREUX", "Servants" => "SERVS", "Templiers" => "TEMPL", "Vaillants" => "VAICH")
+    
+    Colors_Dict = Dict("ARCH" => :deeppink4, "CHEUX" => :red, "GUEUX" => :midnightblue, "HARD" => :grey, "LANC" => :tan4, "PALAS" => :goldenrod1, "PREUX" => :black, "SERVS" => :darkgreen, "TEMPL" => :white, "VAICH" => :dodgerblue3)
+
+    for element in Actors_Matrix[1:end-1]
+        Salt_Dict[Surnames_Dict[element.Nom]] = element.Sel
+    end
+
+    k = collect(keys(Salt_Dict))
+    v = collect(values(Salt_Dict))
+
+    sorted_indices = sortperm(v, rev=true)
+    k_sorted = k[sorted_indices]
+    v_sorted = v[sorted_indices]
+
+    bar_colors = [Colors_Dict[surname] for surname in k_sorted]
+
+    title_font = font("Arial", 18)
+    label_font = font("Arial", 14)
+    tick_font = font("Arial", 8)
+
+    grph = bar(k_sorted, v_sorted, xlabel="Troupes", ylabel="Quantité de sel [g]", title="Classement général jeu permanent", color=bar_colors, legend=false, titlefont=title_font, guidefont=label_font, tickfont=tick_font)
+
+    savefig("./Words/Salt_Info.png")
+	return grph
+end
+
 
 # ╔═╡ f5019805-05db-4c60-b87b-de6f39ac5556
 md"""
@@ -1523,8 +1638,32 @@ function Save_Trp_Info(World_Matrix,Actors_Matrix,Trp::String)
 		end
 		write(fichier,"\n")
 	end
+
+	#Info sur les rentes de sel
+	write(fichier,"3. INFORMATTIONS SUR RÉCOLTES DE SEL DEPUIS LE DERNIER TOUR : \n\n")
+	Salt_Info = []
+	for Trp in Actors_Matrix
+		Prop = Properties(World_Matrix,Trp.Nom)
+		Sizes = 0
+		for i = 1:size(Prop)[1]
+			CaseID = Prop[i]
+			Terr = World_Matrix[CaseID]
+			Sizes += Terr.Type
+			if Terr.IsCoast == true 
+				Sizes += 0.7
+			end
+			if Terr.IsFluvial == true
+				Sizes += 0.3
+			end
+			Sizes = round(Sizes)
+		end
+		ppr = "$(Trp.Nom) : $(2*Sizes) grammes de sel"
+		push!(Salt_Info, ppr)
+	end
+	write(fichier, "Les récoltes ont été bonnes ! Voici les quantités de sels récoltées par chaque troupes depuis le dernier tour grâce aux rentes des territoires. Rappel : le but du jeu est d'avoir le plus de sel possible ! Ce dernier s'obtient en gagnant plus de territoires, en investissant dans le sel, en remportant les épreuves démographiques, ou encore en excellant dans d'autres épreuves du camp !\n\n$(Salt_Info[1])\n$(Salt_Info[2])\n$(Salt_Info[3])\n$(Salt_Info[4])\n$(Salt_Info[5])\n$(Salt_Info[6])\n$(Salt_Info[7])\n$(Salt_Info[8])\n$(Salt_Info[9])\n$(Salt_Info[10])\n\n")
+	
 	#Info autres troupes
-	write(fichier,"3. INFORMATTIONS SUR LES AUTRES TROUPES : \n\n")
+	write(fichier,"4. INFORMATTIONS SUR LES AUTRES TROUPES : \n\n")
 	for element in LonesInfo
 		write(fichier,"$(uppercase(element.Nom)) :\n")
 		write(fichier,"Nombre de territoires : $(element.Territoires)\n")
@@ -1565,10 +1704,10 @@ function Save_Game(World_Matrix::Vector{Any})
     chem = "./Sauvegardes/Sauvegarde_$date_du_jour.txt"
     open(chem, "w") do fichier
         for element in World_Matrix
-            @printf(fichier, "%-10d %-10d %-10s %-10.2f %-10.2f %-10.2f %-10.2f %-10.2f %-10.2f %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n",
+            @printf(fichier, "%-10d %-10d %-10s %-10.2f %-10.2f %-10.2f %-10.2f %-10.2f %-10.2f %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n",
                 element.CaseID, element.Type, element.Troupe, element.Soldats, element.Bateaux, element.Minerais,
                 element.Blé, element.Bois, element.Pierre, element.Ferme, element.Scierie, element.Carrière,
-                element.Mine, element.Port, element.IsFluvial, element.IsCoast, element.IsMountains)
+                element.Mine, element.Port, element.IsFluvial, element.IsCoast)
         end
     end
 end
@@ -1618,8 +1757,7 @@ function Load_Game(file_path::String)
                 parse(Bool, fields[13]),
                 parse(Bool, fields[14]),
                 parse(Bool, fields[15]),
-                parse(Bool, fields[16]),
-                parse(Bool, fields[17])
+                parse(Bool, fields[16])
             )
             push!(World_Matrix, territoire)
         end
@@ -1669,6 +1807,14 @@ md""" #### Mises à jour du 07 MAY 24
 
 #### Mises à jour 28 JUN 24
 - Fonction de sauvegarde opérationnelle (bien expliquer !)
+- Montagnes supprimées
+- Bourse : facteurs alpha supprimés
+- Vérification des soldes des troupes avant qu'un achat soit effectué
+- Lors d'un nouveau tour, le jeu indique la quantité de sel à ajouter à chaque troupe. Ces informations ont également été rajoutées au rapport général
+- Les rentes en sel dépendent de la taille du territoire ET de s'il est côtier et/ou fluvial
+- Le sel est finalement ilmplémenté dans le jeu aussi, pour être sûr qu'il ne soit pas mis de côté. Une fonction qui montre le classement général du jeu perm en fonction de ça est active
+- Changement du coût d'entretien des soldats : 10 --> 7
+- Des ressources (ou du sel) peuvent être allouées par le Roi
 """
 
 # ╔═╡ 663892ec-07d8-4237-b942-1d3bc6aed9ce
@@ -1676,8 +1822,7 @@ md"""
 ### To do prochaine réunion
 - Concrétiser pour le démographique (achat de matériel, description précise de chaque épreuve + de chaque défi à faire dans le cadre des autres actis du camp)
 - Cartes espion : réaliser. Si une troupe l'achète, elle reçoit le bundle d'une autre troupe au choix
-- Fonction achat : vérifier le solde des troupes
-- Catastrophes +locales, mais à chaque tours
+- Catastrophes +locales, mais à chaque tours ++ de catastrophes
 """
 
 # ╔═╡ 018f1d80-9fbc-4d36-a41e-319c86511b76
@@ -1686,31 +1831,16 @@ md"## PARTIE B - INTERFACE DE JEU"
 # ╔═╡ ce6b11f9-8230-4076-8135-12df833d4a82
 begin
 	#Run the following if you want to restart the game
-	#World,Troupes = Start_Game()
+	World,Troupes = Start_Game()
 
 	#Run the following command if you want to simulate a mid-game situation
-	#World,Troupes = Temporary_WorldFiller(World,Troupes)
+	World,Troupes = Temporary_WorldFiller(World,Troupes)
 	
 	#Run the following if you want to recover abackup version of the game (adapt the name !)
-	World, Troupes = Load_Game("./Sauvegardes/Sauvegarde_2024-06-17.txt")
+	#World, Troupes = Load_Game("./Sauvegardes/Sauvegarde_2024-06-17.txt")
 	
 	md"Pour **récupérer une sauvegarde** ou **commencer une nouvelle partie**, veuillez modifier cette cellule. N'oubliez pas de sauvegarder la partie à la fin de chaque tour !"
 end
-
-# ╔═╡ 4c2b42f0-2c6c-40e0-baf1-c6ea489f6a26
-# ╠═╡ disabled = true
-#=╠═╡
-#Démo
-let
-	Mat = []
-	for element in World
-		if element.Type == 1
-			push!(Mat,element.Soldats)
-		end
-	end
-	mean(Mat)
-end
-  ╠═╡ =#
 
 # ╔═╡ 2811036d-a050-4b7b-8d9e-5d6a67aacc38
 """
@@ -1867,6 +1997,7 @@ end
 md"""### AFFICHAGE
 	Sélectionnez ici ce que vous souhaitez afficher :
 
+	 $(@bind GenClass CheckBox()) Classement général\
 	 $(@bind SitGen CheckBox()) Situation des troupes\
 	 $(@bind PropTerr CheckBox()) Caractéristiques d'un territoire\
 	 $(@bind PropTrp CheckBox()) Propriétés d'une troupe\
@@ -1879,7 +2010,7 @@ if PropTerr == true
 elseif PropTrp == true
 	sp = html"&nbsp"
 	md""" **Cochez les informations que vous voulez voir apparaître** :\
-	 $(@bind cad CheckBox()) CaseID $sp $sp $sp $sp $(@bind tye CheckBox()) Type $sp $sp $sp $sp $(@bind sdt CheckBox()) Soldats $sp $sp $sp $sp $(@bind bax CheckBox()) Bâteaux $sp $sp $sp $sp $(@bind mis CheckBox()) Minerais $sp $sp $sp $sp $(@bind ble CheckBox()) Blé $sp $sp $sp $sp $(@bind bos CheckBox()) Bois $sp $sp $sp $(@bind pie CheckBox()) Pierre $sp $sp $sp $sp $sp $(@bind fee CheckBox()) Ferme $sp $sp $sp $(@bind sce CheckBox()) Scierie $sp $sp $sp $sp $(@bind cae CheckBox()) Carrière $sp $sp $sp $sp $(@bind mie CheckBox()) Mine $sp $sp $sp $sp $sp $sp $sp $(@bind pot CheckBox()) Port $sp $sp $sp $(@bind fll CheckBox()) Fluvial $(@bind cor CheckBox()) Côtier $sp $sp $sp $sp $sp $(@bind mos CheckBox()) Mountains
+	 $(@bind cad CheckBox()) CaseID $sp $sp $sp $sp $(@bind tye CheckBox()) Type $sp $sp $sp $sp $(@bind sdt CheckBox()) Soldats $sp $sp $sp $sp $(@bind bax CheckBox()) Bâteaux $sp $sp $sp $sp $(@bind mis CheckBox()) Minerais $sp $sp $sp $sp $(@bind ble CheckBox()) Blé $sp $sp $sp $sp $(@bind bos CheckBox()) Bois $sp $sp $sp $(@bind pie CheckBox()) Pierre $sp $sp $sp $sp $sp $(@bind fee CheckBox()) Ferme $sp $sp $sp $(@bind sce CheckBox()) Scierie $sp $sp $sp $sp $(@bind cae CheckBox()) Carrière $sp $sp $sp $sp $(@bind mie CheckBox()) Mine $sp $sp $sp $sp $sp $sp $sp $(@bind pot CheckBox()) Port $sp $sp $sp $(@bind fll CheckBox()) Fluvial $(@bind cor CheckBox()) Côtier
 	
 	**Nom de la troupe concernée** : $@bind Ttp PlutoUI.confirm(html"<input type=text>")"""
 end
@@ -1897,8 +2028,8 @@ end
 	"""
 function Advanced_Properties_Info(World_Matrix,Actors_Matrix,Troupe::String)
 	Asked_Elements = Dict()
-	button_labels = [cad, tye, sdt, bax, mis, ble, bos, pie, fee, sce, cae, mie, pot, fll, cor, mos]
-	button_names = ["CaseID", "Type", "Soldats", "Bateaux", "Minerais", "Blé", "Bois", "Pierre", "Ferme", "Scierie", "Carrière", "Mine", "Port", "IsFluvial", "IsCoast", "IsMountains"]
+	button_labels = [cad, tye, sdt, bax, mis, ble, bos, pie, fee, sce, cae, mie, pot, fll, cor]
+	button_names = ["CaseID", "Type", "Soldats", "Bateaux", "Minerais", "Blé", "Bois", "Pierre", "Ferme", "Scierie", "Carrière", "Mine", "Port", "IsFluvial", "IsCoast"]
 	buttons_dict = Dict(zip(button_names, button_labels))
 	for element in button_names
 		if buttons_dict[element] == true
@@ -1985,6 +2116,8 @@ elseif PropTrp == true
 	Execute_Display_Properties_Info()
 elseif Market == true
 	Execute_BourseInfo()
+elseif GenClass == true
+	Show_Salt_Info(Troupes)
 end
 
 # ╔═╡ 91a757ac-e56c-4228-8cff-fbd25fa27714
@@ -1998,6 +2131,7 @@ Sélectionnez ici l'action que le joueur souhaite exécuter :
  $(@bind Salt CheckBox()) Acheter du sel avec des ressources\
  $(@bind Ass CheckBox()) Attaquer un territoire\
  $(@bind Exc CheckBox()) Convertir des ressources\
+ $(@bind EndTurn CheckBox()) Allocation de sel ou de ressources par le Roi (fin du tour)\
 """
 
 # ╔═╡ 34d229fe-06af-4179-b44a-5c1208f86ff0
@@ -2158,6 +2292,21 @@ elseif Exc == true
 			""")
 		end
 	)
+elseif EndTurn == true
+	@bind King_Data PlutoUI.confirm(
+		PlutoUI.combine() do Child
+			@htl("""
+			<h3>Allocation de ressources/sel par le Roi </h3>
+			<h6>Attention : Remplissez tous les champs (inscrivez 0 aux troupes auxquelles il ne faut rien allouer) !</h6>
+			<ul>
+			$([
+				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
+				for name in ["Ressource ", "Archers ", "Chevaliers ", "Gueux ", "Hardis ", "Lanciers ", "Paladins ", "Preux ", "Servants ", "Templiers ", "Vaillants "]
+			])
+			</ul>
+			""")
+		end
+	)
 end
 
 # ╔═╡ 3b763c2f-83d8-4be6-9fb5-e6ce1881db52
@@ -2214,8 +2363,8 @@ function Execute_NewTurn()
 	try
 		if lowercase(Mess_Turn) == "je confirme qu'un nouveau tour doit avoir lieu"
 			Apply_catastrophee(World,Troupes,rand(Catas))
-			New_Turn(World,Troupes)
-			pr = "Un nouveau tour a bien été effectué"
+			pr = New_Turn(World,Troupes)
+			#pr = "Un nouveau tour a bien été effectué"
 		elseif Mess_Turn ≠ ""
 			pr = "Le message est mal écrit, veuillez recommencer"
 		end
@@ -2297,6 +2446,39 @@ function Execute_Spread_Soldiers()
 	end
 end
 
+# ╔═╡ ce4e98e2-75db-49e5-a275-0d16a3def59a
+function Execute_Allocate_Ressources()
+	try
+		AR = parse(Int64,King_Data[2])
+		CH = parse(Int64,King_Data[3])
+		GU = parse(Int64,King_Data[4])
+		HA = parse(Int64,King_Data[5])
+		LA = parse(Int64,King_Data[6])
+		PA = parse(Int64,King_Data[7])
+		PR = parse(Int64,King_Data[8])
+		SE = parse(Int64,King_Data[9])
+		TE = parse(Int64,King_Data[10])
+		VA = parse(Int64,King_Data[11])
+		Ress = King_Data[1]
+		Allocate_Ressources(World,Troupes,"Archers",Ress,AR)
+		Allocate_Ressources(World,Troupes,"Chevaliers",Ress,CH)
+		Allocate_Ressources(World,Troupes,"Gueux",Ress,GU)
+		Allocate_Ressources(World,Troupes,"Hardis",Ress,HA)
+		Allocate_Ressources(World,Troupes,"Lanciers",Ress,LA)
+		Allocate_Ressources(World,Troupes,"Paladins",Ress,PA)
+		Allocate_Ressources(World,Troupes,"Preux",Ress,PR)
+		Allocate_Ressources(World,Troupes,"Servants",Ress,SE)
+		Allocate_Ressources(World,Troupes,"Templiers",Ress,TE)
+		Allocate_Ressources(World,Troupes,"Vaillants",Ress,VA)
+		pr = "Les troupes ont bien été approvisionnées en $Ress."
+		print(pr)
+	catch
+		with_terminal() do
+			println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer les allocations de ressources")
+		end
+	end
+end
+
 # ╔═╡ 3daf9148-39d2-493c-96be-307d1e402436
 if Buy == true
 	if Buy_Mil == false
@@ -2318,6 +2500,8 @@ elseif Ass == true
 	Execute_Assault()
 elseif Exc == true
 	Execute_Ressource_Exchange()
+elseif EndTurn == true
+	Execute_Allocate_Ressources()
 end
 
 # ╔═╡ 0f158e7d-ac5f-4832-85a8-a1af5d822e62
@@ -2329,8 +2513,10 @@ md"""### SAUVEGARDER LE JEU
 
 # ╔═╡ f88939de-cd71-4ac7-ad72-6f485029a5c1
 if Save == true
+	Show_Salt_Info(Troupes)
 	Generate_All_txt(World,Troupes)
 elseif SaveGame == true
+	Show_Salt_Info(Troupes)
 	date_du_jour = Dates.today()
     chem = "./Sauvegardes/Sauvegarde_$date_du_jour.txt"
 	Save_Game(World)
@@ -2355,7 +2541,6 @@ end
 # ╟─03951448-2744-4668-a5c0-13a3cb57c8db
 # ╟─2fa4706b-f1ca-4fa0-8568-b0512936d8b2
 # ╟─000d6c33-dc9f-4ddb-8439-20d1a7a98d82
-# ╟─5ebd7c4e-6dba-44dc-b4fe-8fcaf4f5b09c
 # ╟─4e2210be-c52e-42b7-9bd8-3ed46e62a4e3
 # ╠═4c2b42f0-2c6c-40e0-baf1-c6ea489f6a26
 # ╟─28d3f46d-3258-4c9b-bffa-13d9f464cbd5
@@ -2381,12 +2566,14 @@ end
 # ╟─3d3cc7ed-cf7a-4b4f-98e9-95359ad21cef
 # ╟─5882f6dc-0e89-418a-897b-921d233e74e8
 # ╟─2811036d-a050-4b7b-8d9e-5d6a67aacc38
+# ╠═5aef7700-82be-4c8d-9837-f6ffce9f0dbb
 # ╟─d45625d4-9e8f-4724-941e-e9b514a27651
 # ╟─82ce8603-027a-4197-8d9e-d6c471e416ed
 # ╟─ac9c1cb6-78ad-4387-83c5-c83522f5bb6d
 # ╟─4a58cec4-778c-4594-ae25-2492acddc68b
 # ╟─15ccf590-a109-4e7f-aa5a-b756d6fccbe9
 # ╟─02353a04-545f-4e79-b5b3-b93b441138ff
+# ╟─0610f156-775c-4f71-8d28-c284770dabf2
 # ╟─f5019805-05db-4c60-b87b-de6f39ac5556
 # ╟─166ba06c-8fda-44a1-8d83-2c8bd90e3433
 # ╟─470479de-fd0c-4a93-826b-82665a9ede0b
@@ -2405,6 +2592,7 @@ end
 # ╟─662471db-b727-4371-9efd-0f2d5e03e4be
 # ╟─fc69d958-b5e0-45b8-bdcc-6ca858059fc0
 # ╟─d7142012-cb96-468d-b6f1-e05ebe7e5f8f
+# ╠═ce4e98e2-75db-49e5-a275-0d16a3def59a
 # ╟─79b63986-ce3a-451e-be10-4bb90f76f93a
 # ╟─2d89b205-72d1-4a87-8d1a-1f5ad74704bf
 # ╟─663892ec-07d8-4237-b942-1d3bc6aed9ce
