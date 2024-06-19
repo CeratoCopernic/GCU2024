@@ -2,6 +2,7 @@ from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.shared import RGBColor
+import pandas as pd
 import os
 
 def generate_word(init_path, output_folder):
@@ -68,7 +69,7 @@ def generate_word(init_path, output_folder):
             ajouter_titre(ligne.strip())
         elif ligne.startswith("Mise à jour"):
             ajouter_paragraphe_centre(ligne.strip())
-        elif ligne.startswith(("1.","2.","3.")):
+        elif ligne.startswith(("1.","2.","3.","4.")):
             ajouter_sous_titre(ligne.strip())
         elif ligne.startswith(("Territoires possédés :","Ressources :","Armée :","État du mar")):
             mettre_en_gras(ligne.strip())
