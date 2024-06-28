@@ -139,7 +139,7 @@ begin
 	const Port_Cost = [400 600 0 30]
 	const Start_Ressources = [1100 1100 1500 100]
 	const Troupe_Names = ["Archers", "Hardis", "Paladins","Lanciers","Gueux","Preux","Vaillants","Chevaliers","Templiers","Servants","Autochtones"]
-	const Catas = ["tropical rains","earthquakes","forest fires"]
+	const Catas = ["tropical rains","earthquakes","forest fires","tsunami","tornado","virus"]
 	const World_Size = 246
 	const Ref_Money = 500
 	const Boat_Capacity = 10
@@ -630,9 +630,15 @@ end
 	"""
 function Select_Catastrophee_Terr(World_Matrix,size)
 	Continents = [C1,C2,C3,C4,C5,C6]
+	Selected_Cont1 = rand(Continents)
+	Selected_Cont2 = rand(Continents)
+	while Selected_Cont1 == Selected_Cont2
+		Selected_Cont2 = rand(Continents)
+	end
+	Selected_Conts = [Selected_Cont1,Selected_Cont2]
 	Terrs = []
-	for i in 1:6
-		Terr = rand(Continents[i])
+	for i in 1:2
+		Terr = rand(Selected_Conts[i])
 		for j in 1:size
 			push!(Terrs,Terr+j)
 		end
@@ -1378,6 +1384,16 @@ function Exchange_Ressources(World_Matrix,Actors_Matrix,Trp::String,Ress1::Strin
 end
 
 # ╔═╡ 5aef7700-82be-4c8d-9837-f6ffce9f0dbb
+"""
+		Allocate_Ressources(World_Matrix, Actors_Matrix, Trp::String, Ressource::String, Qty)
+	Cette fonction permemt d'allouer (donner) des ressources aux troupes. Elle prend 5 arguments: 
+	- Le vecteur qui contient tous les territoires composant le monde ;
+	- Le vecteur qui contient tous les joueurs ;
+	- La troupe concernée par le don ;
+	- La ressource qui doit être donnée ;
+	- La quantité de cette ressource à donner.
+	Elle ne retourne rien mais effectue les modifications nécessaires dans le jeu.
+	"""
 function Allocate_Ressources(World_Matrix, Actors_Matrix, Trp::String, Ressource::String, Qty)
 	Trp_Strct = Find_Troup(Trp,Actors_Matrix)
 	if lowercase(Ressource) == "blé"
@@ -1697,12 +1713,15 @@ end
 		Save_Game(World_Matrix::Vector{Any})
 	Cette fonction sert à sauvegarder l'état actuel du jeu. Elle prend un argument :
 	- Le vecteur qui contient tous les territoires composant le monde
-	Elle retourne un message de confirmation et génère un fichier `.txt` qui contient une sauvegarde du jeu. Ce fichier peut éventuellement être échangé par des chefs du SDT entre eux pour pouvoir relancer le jeu depuis différents ordinateurs, ou envoyés à Cerato pour qu'il puisse suivre l'état du jeu à distance ;-).
+	- Le vecteur qui contient tous les joueurs.
+	Elle retourne un message de confirmation et génère deux fichiers `.txt` qui contiennent la sauvegarde du jeu. Ces fichiers peuevnt éventuellement être échangés par des chefs du SDT entre eux pour pouvoir relancer le jeu depuis différents ordinateurs, ou envoyés à Cerato pour qu'il puisse suivre l'état du jeu à distance ;-).
 	"""
-function Save_Game(World_Matrix::Vector{Any})
+function Save_Game(World_Matrix::Vector{Any}, Actors_Matrix)
+	Update_LonesSituation(World_Matrix, Actors_Matrix, "NoPrint")
     date_du_jour = Dates.today()
-    chem = "./Sauvegardes/Sauvegarde_$date_du_jour.txt"
-    open(chem, "w") do fichier
+    chem_Terr = "./Sauvegardes/Sauvegarde_Terr_$date_du_jour.txt"
+	chem_Trps = "./Sauvegardes/Sauvegarde_Trps_$date_du_jour.txt"
+    open(chem_Terr, "w") do fichier
         for element in World_Matrix
             @printf(fichier, "%-10d %-10d %-10s %-10.2f %-10.2f %-10.2f %-10.2f %-10.2f %-10.2f %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n",
                 element.CaseID, element.Type, element.Troupe, element.Soldats, element.Bateaux, element.Minerais,
@@ -1710,6 +1729,14 @@ function Save_Game(World_Matrix::Vector{Any})
                 element.Mine, element.Port, element.IsFluvial, element.IsCoast)
         end
     end
+
+	open(chem_Trps, "w") do fichier
+        for element in Actors_Matrix
+            @printf(fichier, "%-10s %-10d %-10d %-10.2d %-10.2f %-10.2f %-10.2f %-10.2f %-10.2f\n",
+                element.Nom, element.Territoires, element.Soldats, element.Bateaux, element.Minerais, element.Blé, element.Bois, element.Pierre, element.Sel)
+        end
+    end
+	
 end
 
 # ╔═╡ eafbff43-6241-42b2-a27f-1f2d68ed6415
@@ -1736,9 +1763,10 @@ end
 		end
 	En veillant bien sûr à adapter le nom du fichoer txt à la version du jeu qu'on souhaite uploader ! N'oubliez pas également de recacher la cellule par après, pour éviter de la refaire tourner par erreur ! (en la faisant retourner par erreur, la partie sera réinitialisée à l'état de la sauvegarde mentionnée, donc tous les changements effectués depuis lors seront perdus !)
 	"""
-function Load_Game(file_path::String)
+function Load_Game(file_path_Terr::String, file_path_Trps::String)
     World_Matrix = Vector{Any}()
-    open(file_path, "r") do fichier
+	Actors_Matrix = Vector{Any}()
+    open(file_path_Terr, "r") do fichier
         for line in eachline(fichier)
             fields = split(line)
             territoire = Territoire(
@@ -1762,7 +1790,25 @@ function Load_Game(file_path::String)
             push!(World_Matrix, territoire)
         end
     end
-	_, Actors_Matrix = Start_Game()
+
+	open(file_path_Trps, "r") do fichier
+        for line in eachline(fichier)
+            fields = split(line)
+            troupe = Troupe(
+                fields[1],
+                parse(Int, fields[2]),
+                parse(Int, fields[3]),
+				parse(Int, fields[4]),
+                parse(Float64, fields[5]),
+                parse(Float64, fields[6]),
+                parse(Float64, fields[7]),
+                parse(Float64, fields[8]),
+                parse(Float64, fields[9]),
+            )
+            push!(Actors_Matrix, troupe)
+        end
+    end
+	#_, Actors_Matrix = Start_Game()
 	Update_LonesSituation(World_Matrix,Actors_Matrix,"Noprint")
     return World_Matrix, Actors_Matrix
 end
@@ -1806,7 +1852,7 @@ md""" #### Mises à jour du 07 MAY 24
 - Achat de soldats/bateaux possibles en masse. Spawn au point de départ.
 
 #### Mises à jour 28 JUN 24
-- Fonction de sauvegarde opérationnelle (bien expliquer !)
+- Fonction de sauvegarde opérationnelle (bien expliquer !) + bugs réglés
 - Montagnes supprimées
 - Bourse : facteurs alpha supprimés
 - Vérification des soldes des troupes avant qu'un achat soit effectué
@@ -1815,6 +1861,7 @@ md""" #### Mises à jour du 07 MAY 24
 - Le sel est finalement ilmplémenté dans le jeu aussi, pour être sûr qu'il ne soit pas mis de côté. Une fonction qui montre le classement général du jeu perm en fonction de ça est active
 - Changement du coût d'entretien des soldats : 10 --> 7
 - Des ressources (ou du sel) peuvent être allouées par le Roi
+- Plus de catastrophes
 """
 
 # ╔═╡ 663892ec-07d8-4237-b942-1d3bc6aed9ce
@@ -1823,6 +1870,7 @@ md"""
 - Concrétiser pour le démographique (achat de matériel, description précise de chaque épreuve + de chaque défi à faire dans le cadre des autres actis du camp)
 - Cartes espion : réaliser. Si une troupe l'achète, elle reçoit le bundle d'une autre troupe au choix
 - Catastrophes +locales, mais à chaque tours ++ de catastrophes
+- Fonction sauvegarde : inclure les structures troupes 
 """
 
 # ╔═╡ 018f1d80-9fbc-4d36-a41e-319c86511b76
@@ -1837,7 +1885,7 @@ begin
 	World,Troupes = Temporary_WorldFiller(World,Troupes)
 	
 	#Run the following if you want to recover abackup version of the game (adapt the name !)
-	#World, Troupes = Load_Game("./Sauvegardes/Sauvegarde_2024-06-17.txt")
+	#orld, Troupes = Load_Game("./Sauvegardes/Sauvegarde_Terr_2024-06-27.txt","./Sauvegardes/Sauvegarde_Trps_2024-06-27.txt")
 	
 	md"Pour **récupérer une sauvegarde** ou **commencer une nouvelle partie**, veuillez modifier cette cellule. N'oubliez pas de sauvegarder la partie à la fin de chaque tour !"
 end
@@ -1868,7 +1916,7 @@ function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
 	if lowercase(Cat_Type) == "tropical rains"
 		Impacted_Terrs = Select_Catastrophee_Terr(World_Matrix,20)
 		for element in World_Matrix
-			if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones"
+			if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones" && element.Type ≠ 0
 				Trp = element.Troupe
 				Trp_Strct = Find_Troup(Trp,Actors_Matrix)
 				if element.IsFluvial == true
@@ -1893,7 +1941,7 @@ function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
 	elseif lowercase(Cat_Type) == "forest fires"
 		Impacted_Terrs = Select_Catastrophee_Terr(World_Matrix,10)
 		 for element in World_Matrix
-			 if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones"
+			 if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones" && element.Type ≠ 0
 			 	Trp = element.Troupe
 				Trp_Strct = Find_Troup(Trp,Actors_Matrix)
 				element.Ferme = false
@@ -1916,7 +1964,7 @@ function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
 	elseif lowercase(Cat_Type) == "earthquakes"
 		Impacted_Terrs = Select_Catastrophee_Terr(World_Matrix,10)
 		 for element in World_Matrix
-			 if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones"
+			 if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones" && element.Type ≠ 0
 			 	Trp = element.Troupe
 				Trp_Strct = Find_Troup(Trp,Actors_Matrix)
 				element.Carrière = false
@@ -1936,6 +1984,82 @@ function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
 			 end
 		 end
 		Mess = "Chers Lones,\nC'est avec une profonde angoisse que je vous adresse une fois de plus la parole aujourd'hui. Malheureusement, nos terres ont été secouées par des forces incontrôlables. Ce matin, les nouvelles sont arrivées à la capitale, annonçant des tremblements de terre dévastateurs. Les mines et les carrières à travers les territoires touchés sont désormais en ruines, nous laissant calculer le coût en pierres précieuses et en minerais. De plus, nous sommes attristés par la perte de nos soldats qui, dans leurs heures de loisir, travaillaient dans les sous-terrains et ont péri dans les décombres. Dans le sillage de cette tragédie, je vous appelle tous à vous rassembler à la Capitale à 15h00 aujourd'hui. Ensemble, nous devons tracer une voie à suivre dans ces moments troublés. Je vous encourage à nouveau à vous réunir avec vos conseillers internes pour élaborer vos stratégies à l'avance, car nous n'avons pas de temps à perdre. Quels que soient les défis à venir, soyons prêts à y faire face...\n\nTerritoires touchés :\n$(Impacted_Terrs)"
+	elseif lowercase(Cat_Type) == "tsunami"
+		Impacted_Terrs = Select_Catastrophee_Terr(World_Matrix,20)
+		 for element in World_Matrix
+			 if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones" && (element.IsCoast == true || element.IsFluvial == true) && element.Type ≠ 0
+			 	Trp = element.Troupe
+				Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+				element.Ferme = false
+				element.Scierie = false
+				element.Port = false
+				element.Bateaux = 0
+				Trp_Strct.Bois -= 3*element.Bois
+				Trp_Strct.Blé -= 4*element.Blé
+				if element.Soldats > 10
+					element.Soldats -= 5
+				elseif element.Soldats > 5
+					element.Soldats -= 3
+				elseif element.Soldats > 3
+					element.Soldats -= 2
+				elseif element.Soldats > 0
+					element.Soldats -= 1
+				end
+			 end
+			 if element.Soldats == 0
+				 element.Troupe = "Autochtones"
+			 end
+		 end
+		Mess = "Chers Lones,\nC'est avec une profonde angoisse que je vous adresse une fois de plus la parole. Malheureusement, nos terres ont été secouées par des forces incontrôlables. Ce matin, les nouvelles sont arrivées à la capitale, annonçant un tsunami dévastateur qui a ravagé nos côtes et nos campagnes. Les cultures de blé, qui nourrissaient nos familles et nos soldats, ont été entièrement ravagées. Les vagues impitoyables ont déraciné les plants et emporté les récoltes, nous laissant avec une pénurie alimentaire à laquelle nous devons faire face de toute urgence.Les bâtiments fragiles, tels que les fermes, les scieries et les ports, ont été complètement détruits. Les fermes, qui étaient le cœur de notre production agricole, ne sont plus que des ruines boueuses. Les scieries, vitales pour notre approvisionnement en bois, ont été emportées par les flots tumultueux. Les ports, qui étaient nos portes ouvertes vers le commerce et l’approvisionnement, sont désormais impraticables, les quais ayant été réduits à des débris flottants. Ce qui est encore plus déchirant, c’est la perte de nos braves soldats. Beaucoup ont péri dans cette catastrophe, surpris par les eaux déchaînées alors qu'ils tentaient de sécuriser les villages et d'aider à l'évacuation des habitants. Leur sacrifice ne sera pas oublié, et leur bravoure doit nous inspirer dans les jours sombres à venir. Dans le sillage de cette tragédie, je vous appelle tous à vous rassembler à la Capitale à 15h00 aujourd'hui. Ensemble, nous devons tracer une voie à suivre dans ces moments troublés. Je vous encourage à nouveau à vous réunir avec vos conseillers internes pour élaborer vos stratégies à l'avance, car nous n'avons pas de temps à perdre.Quoi qu'il advienne, soyez prêts...\n\nTerritoires touchés :\n$(Impacted_Terrs)"
+	elseif lowercase(Cat_Type) == "virus"
+		Impacted_Terrs = Select_Catastrophee_Terr(World_Matrix,15)
+		 for element in World_Matrix
+			 if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones" && element.Type ≠ 0
+			 	Trp = element.Troupe
+				Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+				element.Ferme = false
+				Trp_Strct.Blé -= 5*element.Blé
+				if element.Soldats > 10
+					element.Soldats -= 6
+				elseif element.Soldats > 5
+					element.Soldats -= 3
+				elseif element.Soldats > 3
+					element.Soldats -= 2
+				elseif element.Soldats > 0
+					element.Soldats -= 1
+				end
+			 end
+			 if element.Soldats == 0
+				 element.Troupe = "Autochtones"
+			 end
+		 end
+		Mess = "C'est avec une profonde angoisse que je vous adresse cette lettre. Malheureusement, nos terres ont été frappées par un mal invisible mais dévastateur. Ce matin, les nouvelles sont arrivées à la capitale, annonçant que le virus qui sévit depuis des semaines a causé des ravages considérables. La population a été durement touchée, et nos soldats n'ont pas été épargnés. Beaucoup ont péri ou ont dû quitter l'armée en raison de leur maladie. Leur absence se fait cruellement sentir, non seulement dans nos rangs militaires, mais aussi dans nos cœurs. Le marché du blé a également énormément souffert. Nombreuses sont les cultures qui ont été contaminées, rendant les récoltes inutilisables. Certaines fermes et champs ont dû être brûlés par précaution, dans une tentative désespérée de stopper la propagation du virus. Cette situation nous laisse face à une crise alimentaire sans précédent, nécessitant des mesures urgentes et concertées. Dans le sillage de cette tragédie, je vous appelle tous à vous rassembler à la Capitale à 15h00 aujourd'hui. Ensemble, nous devons tracer une voie à suivre dans ces moments troublés. Je vous encourage à nouveau à vous réunir avec vos conseillers internes pour élaborer vos stratégies à l'avance, car nous n'avons pas de temps à perdre. Soyez prêts...\n\nTerritoires touchés :\n$(Impacted_Terrs)"
+	elseif lowercase(Cat_Type) == "tornado"
+		Impacted_Terrs = Select_Catastrophee_Terr(World_Matrix,12)
+		 for element in World_Matrix
+			 if element.CaseID in Impacted_Terrs && element.Troupe ≠ "Autochtones" && element.Type ≠ 0
+			 	Trp = element.Troupe
+				Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+				element.Ferme = false
+				element.Scierie = false
+				if element.Bateaux > 0
+					element.Bateaux -= 1
+				end
+				Trp_Strct.Blé -= 3*element.Blé
+				Trp_Strct.Bois -= 2*element.Bois
+				if element.Soldats > 10
+					element.Soldats -= 4
+				elseif element.Soldats > 5
+					element.Soldats -= 2
+				elseif element.Soldats > 0
+					element.Soldats -= 1
+				end
+			 end
+			 if element.Soldats == 0
+				 element.Troupe = "Autochtones"
+			 end
+		 end
+		Mess = "C'est avec une profonde angoisse que je vous adresse une fois de plus la parole aujourd'hui. Malheureusement, nos terres ont été frappées par des forces incontrôlables. Ce matin, les nouvelles sont arrivées à la capitale, annonçant que des tornades dévastatrices ont ravagé notre territoire. Les champs de blé et les forêts ont été sévèrement touchés. Les récoltes, qui nourrissaient nos populations et nos armées, ont été emportées par les vents violents. Nos forêts, sources de bois et de vie, ne sont plus que des amas de troncs déracinés et de branches brisées. Les fermes et les scieries, si fragiles face à ces colères de la nature, ont été réduites en ruines. Nos moyens de production agricole et forestière sont désormais gravement compromis. Nos soldats, courageux et dévoués, ont payé un lourd tribut en tentant de protéger leurs biens et leurs familles. Certains ont péri, d'autres ont été grièvement blessés. Ces pertes dans nos rangs affaiblissent notre capacité à défendre et à reconstruire nos territoires, et leur absence se fait cruellement sentir. De plus, certains de nos bateaux, essentiels pour le commerce et le ravitaillement, ont été détruits et sont maintenant inutilisables. Cette perte aggrave encore notre situation, rendant les échanges et les approvisionnements encore plus difficiles. Dans le sillage de cette tragédie, je vous appelle tous à vous rassembler à la Capitale à 15h00 aujourd'hui. Ensemble, nous devons tracer une voie à suivre dans ces moments troublés. Je vous encourage à nouveau à vous réunir avec vos conseillers internes pour élaborer vos stratégies à l'avance, car nous n'avons pas de temps à perdre. Soyez prêts...\n\nTerritoires touchés :\n$(Impacted_Terrs)"
 	end
 	# Eviter que les troupes passent en négatif niveau ressources
 	for element in Actors_Matrix
@@ -2518,13 +2642,14 @@ if Save == true
 elseif SaveGame == true
 	Show_Salt_Info(Troupes)
 	date_du_jour = Dates.today()
-    chem = "./Sauvegardes/Sauvegarde_$date_du_jour.txt"
-	Save_Game(World)
-	print("Le jeu a bien été sauvegardé dans le fichier \"Sauvegarde_$date_du_jour.txt\", à l'intérieur du dossier \"Sauvegardes\"")
+    chem = "./Sauvegardes/Sauvegarde_Terr_$date_du_jour.txt"
+	chem2 = "./Sauvegardes/Sauvegarde_Trps_$date_du_jour.txt"
+	Save_Game(World,Troupes)
+	print("Le jeu a bien été sauvegardé dans les fichiers \"Sauvegarde_Terr_$date_du_jour.txt\" et \"Sauvegarde_Trps_$date_du_jour.txt\", à l'intérieur du dossier \"Sauvegardes\"")
 end
 
 # ╔═╡ Cell order:
-# ╠═c7e31109-3c17-4880-b870-6dd45eb29aa1
+# ╟─c7e31109-3c17-4880-b870-6dd45eb29aa1
 # ╟─b9b43e1a-fac4-403c-9bd7-02e9126f0ca8
 # ╟─27d48cc9-69bb-49f1-8290-ac821e6f77d9
 # ╟─9462050f-92ca-4c33-b1f8-afcc80ede3cf
@@ -2533,7 +2658,7 @@ end
 # ╟─ba82811c-91b4-4355-97ce-ea731c2000c9
 # ╠═61fbec2c-1003-4ccf-a588-0f5b927226f1
 # ╟─4f4b516e-00c6-4dc3-aee3-7fb8c1a1b8cf
-# ╠═2bebe9c0-b5af-4336-825a-9add6581d21d
+# ╟─2bebe9c0-b5af-4336-825a-9add6581d21d
 # ╟─1d6eba18-9d51-4c96-975d-bdc9c5d2e861
 # ╟─60a165a8-4e65-4948-8fd7-d8c744051037
 # ╟─0b8cd34c-02e7-4559-a687-bc1a8f020ddf
@@ -2566,7 +2691,7 @@ end
 # ╟─3d3cc7ed-cf7a-4b4f-98e9-95359ad21cef
 # ╟─5882f6dc-0e89-418a-897b-921d233e74e8
 # ╟─2811036d-a050-4b7b-8d9e-5d6a67aacc38
-# ╠═5aef7700-82be-4c8d-9837-f6ffce9f0dbb
+# ╟─5aef7700-82be-4c8d-9837-f6ffce9f0dbb
 # ╟─d45625d4-9e8f-4724-941e-e9b514a27651
 # ╟─82ce8603-027a-4197-8d9e-d6c471e416ed
 # ╟─ac9c1cb6-78ad-4387-83c5-c83522f5bb6d
@@ -2592,7 +2717,7 @@ end
 # ╟─662471db-b727-4371-9efd-0f2d5e03e4be
 # ╟─fc69d958-b5e0-45b8-bdcc-6ca858059fc0
 # ╟─d7142012-cb96-468d-b6f1-e05ebe7e5f8f
-# ╠═ce4e98e2-75db-49e5-a275-0d16a3def59a
+# ╟─ce4e98e2-75db-49e5-a275-0d16a3def59a
 # ╟─79b63986-ce3a-451e-be10-4bb90f76f93a
 # ╟─2d89b205-72d1-4a87-8d1a-1f5ad74704bf
 # ╟─663892ec-07d8-4237-b942-1d3bc6aed9ce
