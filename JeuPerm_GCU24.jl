@@ -327,21 +327,6 @@ function Start_Game()
 	return World_Matrix, Actors_Matrix
 end
 
-# ╔═╡ 4c2b42f0-2c6c-40e0-baf1-c6ea489f6a26
-# ╠═╡ disabled = true
-#=╠═╡
-#Démo
-let
-	Mat = []
-	for element in World
-		if element.Type == 1
-			push!(Mat,element.Soldats)
-		end
-	end
-	mean(Mat)
-end
-  ╠═╡ =#
-
 # ╔═╡ 28d3f46d-3258-4c9b-bffa-13d9f464cbd5
 md"##### 3.3. Création d'une situation de jeu fictive"
 
@@ -766,7 +751,7 @@ end
 
 # ╔═╡ f209d063-9403-4578-8fd8-f521f97089d6
 """
-		Add_Mil_Entities(World_Matrix,Actors_Matrix,Trp::String,Entity::String,Qty)
+		Add_Mil_Entities(World_Matrix,Actors_Matrix,Trp::String,Entity::String,Qty,Terr)
 	Cette fonction permet d'acheter plusieurs bâteaux/soldats à la fois. Elle prend 5 arguments :
 	- Le vecteur qui contient tous les territoires composant le monde ;
 	- Le vecteur qui contient tous les joueurs ;
@@ -775,8 +760,9 @@ end
 	- La quantité d'unités à acheter
 	Elle effectue les changements nécessaires dans le jeu et retourne un message qui renseigne l'état de l'achat.
 	"""
-function Add_Mil_Entities(World_Matrix,Actors_Matrix,Trp::String,Entity::String,Qty)
+function Add_Mil_Entities(World_Matrix,Actors_Matrix,Trp::String,Entity::String,Qty,Terr)
 	Trp_Strct = Find_Troup(Trp,Actors_Matrix)
+	Terr_Strct = Find_Terr(Terr,World_Matrix)
 	Prp = Properties(World_Matrix,Trp)
 	Mat = []
 	Executable = true
@@ -786,10 +772,10 @@ function Add_Mil_Entities(World_Matrix,Actors_Matrix,Trp::String,Entity::String,
 			push!(Mat,elm)
 		end
 	end
-	Spawn_Terr = Mat[1]
+
 	imat = []
 	for i in 1:Qty
-		ppr = Add_Entity(World_Matrix,Actors_Matrix,Spawn_Terr,Entity)
+		ppr = Add_Entity(World_Matrix,Actors_Matrix,Terr_Strct,Entity)
 		if startswith(ppr, "Achat effectué")
 			push!(imat,i)
 		else
@@ -797,6 +783,18 @@ function Add_Mil_Entities(World_Matrix,Actors_Matrix,Trp::String,Entity::String,
 			break
 		end
 	end
+	#else
+		#Spawn_Terr = Mat[1]
+		#imat = []
+		#for i in 1:Qty
+			#ppr = Add_Entity(World_Matrix,Actors_Matrix,Spawn_Terr,Entity)
+			#if startswith(ppr, "Achat effectué")
+				#push!(imat,i)
+			#else
+				#Executable = false
+				#break
+			#end
+		#end
 	
 	if Entity == "Soldat"
 		char = "s"
@@ -808,9 +806,9 @@ function Add_Mil_Entities(World_Matrix,Actors_Matrix,Trp::String,Entity::String,
 	if effective_adds == 0
 		pr = "Achat non-effectué : les $Trp ne possèdent pas assez de ressources pour acheter des $(lowercase(Entity))$char."
 	elseif effective_adds < Qty
-		pr = "Achat partiellement effectué : les $Trp ne possédaient pas suffisemment de ressources pour l'achat de $Qty $(lowercase(Entity))$char. Seuls $effective_adds $(lowercase(Entity))$char ont donc été achetés. Ils se situent au port de la capitale, sur le territoire n°$(Spawn_Terr.CaseID)."
+		pr = "Achat partiellement effectué : les $Trp ne possédaient pas suffisemment de ressources pour l'achat de $Qty $(lowercase(Entity))$char. Seuls $effective_adds $(lowercase(Entity))$char ont donc été achetés. Ils se situent sur le territoire n°$(Terr_Strct.CaseID)."
 	else
-		pr = "Achat effectué : Les $Trp ont acheté $effective_adds $(lowercase(Entity))$char. Ils se situent au port de la capitale, sur le territoire n°$(Spawn_Terr.CaseID)."
+		pr = "Achat effectué : Les $Trp ont acheté $effective_adds $(lowercase(Entity))$char. Ils se situent sur le territoire n°$(Terr_Strct.CaseID)."
 	end
 	return pr
 end
@@ -1879,13 +1877,13 @@ md"## PARTIE B - INTERFACE DE JEU"
 # ╔═╡ ce6b11f9-8230-4076-8135-12df833d4a82
 begin
 	#Run the following if you want to restart the game
-	World,Troupes = Start_Game()
+	#World,Troupes = Start_Game()
 
 	#Run the following command if you want to simulate a mid-game situation
-	World,Troupes = Temporary_WorldFiller(World,Troupes)
+	#World,Troupes = Temporary_WorldFiller(World,Troupes)
 	
 	#Run the following if you want to recover abackup version of the game (adapt the name !)
-	#orld, Troupes = Load_Game("./Sauvegardes/Sauvegarde_Terr_2024-06-27.txt","./Sauvegardes/Sauvegarde_Trps_2024-06-27.txt")
+	World, Troupes = Load_Game("./Sauvegardes/Sauvegarde_Terr_2024-07-11.txt","./Sauvegardes/Sauvegarde_Trps_2024-07-11.txt")
 	
 	md"Pour **récupérer une sauvegarde** ou **commencer une nouvelle partie**, veuillez modifier cette cellule. N'oubliez pas de sauvegarder la partie à la fin de chaque tour !"
 end
@@ -1934,6 +1932,7 @@ function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
 				end
 				if element.Soldats == 0
 				 element.Troupe = "Autochtones"
+				 element.Soldats = round(3*rand(1)[1])+1
 			 	end
 			end
 		end
@@ -1957,6 +1956,7 @@ function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
 				end
 				 if element.Soldats == 0
 					 element.Troupe = "Autochtones"
+					 element.Soldats = round(3*rand(1)[1])+1
 				 end
 			 end
 		 end
@@ -1981,6 +1981,7 @@ function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
 			 end
 			 if element.Soldats == 0
 				 element.Troupe = "Autochtones"
+				 element.Soldats = round(3*rand(1)[1])+1
 			 end
 		 end
 		Mess = "Chers Lones,\nC'est avec une profonde angoisse que je vous adresse une fois de plus la parole aujourd'hui. Malheureusement, nos terres ont été secouées par des forces incontrôlables. Ce matin, les nouvelles sont arrivées à la capitale, annonçant des tremblements de terre dévastateurs. Les mines et les carrières à travers les territoires touchés sont désormais en ruines, nous laissant calculer le coût en pierres précieuses et en minerais. De plus, nous sommes attristés par la perte de nos soldats qui, dans leurs heures de loisir, travaillaient dans les sous-terrains et ont péri dans les décombres. Dans le sillage de cette tragédie, je vous appelle tous à vous rassembler à la Capitale à 15h00 aujourd'hui. Ensemble, nous devons tracer une voie à suivre dans ces moments troublés. Je vous encourage à nouveau à vous réunir avec vos conseillers internes pour élaborer vos stratégies à l'avance, car nous n'avons pas de temps à perdre. Quels que soient les défis à venir, soyons prêts à y faire face...\n\nTerritoires touchés :\n$(Impacted_Terrs)"
@@ -2008,6 +2009,7 @@ function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
 			 end
 			 if element.Soldats == 0
 				 element.Troupe = "Autochtones"
+				 element.Soldats = round(3*rand(1)[1])+1
 			 end
 		 end
 		Mess = "Chers Lones,\nC'est avec une profonde angoisse que je vous adresse une fois de plus la parole. Malheureusement, nos terres ont été secouées par des forces incontrôlables. Ce matin, les nouvelles sont arrivées à la capitale, annonçant un tsunami dévastateur qui a ravagé nos côtes et nos campagnes. Les cultures de blé, qui nourrissaient nos familles et nos soldats, ont été entièrement ravagées. Les vagues impitoyables ont déraciné les plants et emporté les récoltes, nous laissant avec une pénurie alimentaire à laquelle nous devons faire face de toute urgence.Les bâtiments fragiles, tels que les fermes, les scieries et les ports, ont été complètement détruits. Les fermes, qui étaient le cœur de notre production agricole, ne sont plus que des ruines boueuses. Les scieries, vitales pour notre approvisionnement en bois, ont été emportées par les flots tumultueux. Les ports, qui étaient nos portes ouvertes vers le commerce et l’approvisionnement, sont désormais impraticables, les quais ayant été réduits à des débris flottants. Ce qui est encore plus déchirant, c’est la perte de nos braves soldats. Beaucoup ont péri dans cette catastrophe, surpris par les eaux déchaînées alors qu'ils tentaient de sécuriser les villages et d'aider à l'évacuation des habitants. Leur sacrifice ne sera pas oublié, et leur bravoure doit nous inspirer dans les jours sombres à venir. Dans le sillage de cette tragédie, je vous appelle tous à vous rassembler à la Capitale à 15h00 aujourd'hui. Ensemble, nous devons tracer une voie à suivre dans ces moments troublés. Je vous encourage à nouveau à vous réunir avec vos conseillers internes pour élaborer vos stratégies à l'avance, car nous n'avons pas de temps à perdre.Quoi qu'il advienne, soyez prêts...\n\nTerritoires touchés :\n$(Impacted_Terrs)"
@@ -2031,6 +2033,7 @@ function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
 			 end
 			 if element.Soldats == 0
 				 element.Troupe = "Autochtones"
+				 element.Soldats = round(3*rand(1)[1])+1
 			 end
 		 end
 		Mess = "C'est avec une profonde angoisse que je vous adresse cette lettre. Malheureusement, nos terres ont été frappées par un mal invisible mais dévastateur. Ce matin, les nouvelles sont arrivées à la capitale, annonçant que le virus qui sévit depuis des semaines a causé des ravages considérables. La population a été durement touchée, et nos soldats n'ont pas été épargnés. Beaucoup ont péri ou ont dû quitter l'armée en raison de leur maladie. Leur absence se fait cruellement sentir, non seulement dans nos rangs militaires, mais aussi dans nos cœurs. Le marché du blé a également énormément souffert. Nombreuses sont les cultures qui ont été contaminées, rendant les récoltes inutilisables. Certaines fermes et champs ont dû être brûlés par précaution, dans une tentative désespérée de stopper la propagation du virus. Cette situation nous laisse face à une crise alimentaire sans précédent, nécessitant des mesures urgentes et concertées. Dans le sillage de cette tragédie, je vous appelle tous à vous rassembler à la Capitale à 15h00 aujourd'hui. Ensemble, nous devons tracer une voie à suivre dans ces moments troublés. Je vous encourage à nouveau à vous réunir avec vos conseillers internes pour élaborer vos stratégies à l'avance, car nous n'avons pas de temps à perdre. Soyez prêts...\n\nTerritoires touchés :\n$(Impacted_Terrs)"
@@ -2057,6 +2060,7 @@ function Apply_catastrophee(World_Matrix,Actors_Matrix,Cat_Type)
 			 end
 			 if element.Soldats == 0
 				 element.Troupe = "Autochtones"
+				 element.Soldats = round(3*rand(1)[1])+1
 			 end
 		 end
 		Mess = "C'est avec une profonde angoisse que je vous adresse une fois de plus la parole aujourd'hui. Malheureusement, nos terres ont été frappées par des forces incontrôlables. Ce matin, les nouvelles sont arrivées à la capitale, annonçant que des tornades dévastatrices ont ravagé notre territoire. Les champs de blé et les forêts ont été sévèrement touchés. Les récoltes, qui nourrissaient nos populations et nos armées, ont été emportées par les vents violents. Nos forêts, sources de bois et de vie, ne sont plus que des amas de troncs déracinés et de branches brisées. Les fermes et les scieries, si fragiles face à ces colères de la nature, ont été réduites en ruines. Nos moyens de production agricole et forestière sont désormais gravement compromis. Nos soldats, courageux et dévoués, ont payé un lourd tribut en tentant de protéger leurs biens et leurs familles. Certains ont péri, d'autres ont été grièvement blessés. Ces pertes dans nos rangs affaiblissent notre capacité à défendre et à reconstruire nos territoires, et leur absence se fait cruellement sentir. De plus, certains de nos bateaux, essentiels pour le commerce et le ravitaillement, ont été détruits et sont maintenant inutilisables. Cette perte aggrave encore notre situation, rendant les échanges et les approvisionnements encore plus difficiles. Dans le sillage de cette tragédie, je vous appelle tous à vous rassembler à la Capitale à 15h00 aujourd'hui. Ensemble, nous devons tracer une voie à suivre dans ces moments troublés. Je vous encourage à nouveau à vous réunir avec vos conseillers internes pour élaborer vos stratégies à l'avance, car nous n'avons pas de temps à perdre. Soyez prêts...\n\nTerritoires touchés :\n$(Impacted_Terrs)"
@@ -2329,7 +2333,7 @@ if Buy == true
 				<ul>
 				$([
 					@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
-					for name in ["Troupe qui désire effectuer l'achat ", "Unité à acheter ","Quantité d'unités "]
+					for name in ["Troupe qui désire effectuer l'achat ", "Unité à acheter ","Quantité d'unités ","ID du territoire de destination "]
 				])
 				</ul>
 				""")
@@ -2455,7 +2459,8 @@ function Execute_Buy_Mil()
 		Trp = Buy_Mil_Data[1]
 		Unit = Buy_Mil_Data[2]
 		Qty = parse(Int64,Buy_Mil_Data[3])
-		pr = Add_Mil_Entities(World, Troupes,Trp,Unit,Qty)
+		Terr = parse(Int64,Buy_Mil_Data[4])
+		pr = Add_Mil_Entities(World, Troupes,Trp,Unit,Qty,Terr)
 		println(pr)
 	catch
 		with_terminal() do
@@ -2667,7 +2672,6 @@ end
 # ╟─2fa4706b-f1ca-4fa0-8568-b0512936d8b2
 # ╟─000d6c33-dc9f-4ddb-8439-20d1a7a98d82
 # ╟─4e2210be-c52e-42b7-9bd8-3ed46e62a4e3
-# ╠═4c2b42f0-2c6c-40e0-baf1-c6ea489f6a26
 # ╟─28d3f46d-3258-4c9b-bffa-13d9f464cbd5
 # ╟─abd800af-4f8f-48bb-9588-f43c75957605
 # ╟─dc8eff81-5e94-4cb2-8e78-b822f307a120
