@@ -136,7 +136,7 @@ begin
 	const Boat_Cost = [400 0 0 5]
 	const Sold_Cost = [0 0 0 10]
 	const SoldEntr_Cost = [0 0 7 0]
-	const Port_Cost = [400 600 0 30]
+	const Port_Cost = [175 225 0 75]
 	const Start_Ressources = [1100 1100 1500 100]
 	const Troupe_Names = ["Archers", "Hardis", "Paladins","Lanciers","Gueux","Preux","Vaillants","Chevaliers","Templiers","Servants","Autochtones"]
 	const Catas = ["tropical rains","earthquakes","forest fires","tsunami","tornado","virus"]
@@ -945,46 +945,50 @@ Puisque le sel n'est pas stocké dans le programme mais en réel, cette fonction
 
 Si ce dernier message s'affiche, ça veut dire que les ressources ont déjà été retirées une fois. Attention, en faisant tourner la fonction deux fois, on retire deux fois les ressources !
 	"""
-function Ressource2Salt(Actors_Matrix,Troupe::String,Ressource::String,Quantity)
+function Ressource2Salt(World_Matrix,Actors_Matrix,Troupe::String,Ressource::String,Quantity)
 	# Quantity doit être exprimée en grammes
+	Min_Disc_frac,Blé_Disc_frac,Bois_Disc_frac,Pir_Disc_frac = Give_Market_State(World_Matrix)
 	Trp = Find_Troup(Troupe,Actors_Matrix)
 	if Ressource == "Blé"
 		Cost = Quantity
-		Salt_obtnd = Quantity/100
+		Salt_obtnd = Quantity/35
 		if Trp.Blé >= Cost
 			Trp.Blé = Trp.Blé-Cost
 			Trp.Sel += Salt_obtnd
-			pr = "Les $Troupe viennent d'échanger $Quantity unités de blé contre $Salt_obtnd grammes de sel"
+			pr = "Les $Troupe viennent d'échanger $Quantity unités de blé contre $(round(Salt_obtnd*100)/100) grammes de sel"
 		else
 			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
 		end
 	elseif Ressource == "Pierre"
+		beta = Pir_Disc_frac/Blé_Disc_frac
 		Cost = Quantity
-		Salt_obtnd = Quantity/100
+		Salt_obtnd = (Quantity/35)*beta
 		if Trp.Pierre >= Cost
 			Trp.Pierre = Trp.Pierre-Cost
 			Trp.Sel += Salt_obtnd
-			pr = "Les $Troupe viennent d'échanger $Quantity unités de pierre contre $Salt_obtnd grammes de sel"
+			pr = "Les $Troupe viennent d'échanger $Quantity unités de pierre contre $(round(Salt_obtnd*100)/100) grammes de sel"
 		else
 			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
 		end
 	elseif Ressource == "Minerais"
+		beta = Min_Disc_frac/Blé_Disc_frac
 		Cost = Quantity
-		Salt_obtnd = Quantity/100
+		Salt_obtnd = (Quantity/35)*beta
 		if Trp.Minerais >= Cost
 			Trp.Minerais = Trp.Minerais-Cost
 			Trp.Sel += Salt_obtnd
-			pr = "Les $Troupe viennent d'échanger $Quantity unités de minerais contre $Salt_obtnd grammes de sel"
+			pr = "Les $Troupe viennent d'échanger $Quantity unités de minerais contre $(round(Salt_obtnd*100)/100) grammes de sel"
 		else
 			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
 		end
 	elseif Ressource == "Bois"
+		beta = Bois_Disc_frac/Blé_Disc_frac
 		Cost = Quantity
-		Salt_obtnd = Quantity/100
+		Salt_obtnd = (Quantity/35)*beta
 		if Trp.Bois >= Cost
 			Trp.Bois = Trp.Bois-Cost
 			Trp.Sel += Salt_obtnd
-			pr = "Les $Troupe viennent d'échanger $Quantity unités de bois contre $Salt_obtnd grammes de sel"
+			pr = "Les $Troupe viennent d'échanger $Quantity unités de bois contre $(round(Salt_obtnd*100)/100) grammes de sel"
 		else
 			pr = "Les $Troupe n'ont pas assez de $Ressource pour effectuer cet échange"
 		end
@@ -1262,7 +1266,7 @@ end
 	- Le type de ressource qu'elle souhaite vendre ;
 	- Le type de ressource qu'elle souhaite recvoir en échange ;
 	- La quantité de ressource qu'elle souhaite vendre.
-	Elle effectue toutes les modifications nécessaires dans le jeu, et retourne un message qui donne un feedback sur ce qu'elle a effectué.
+	Elle effectue toutes les modifications nécessaires dans le jeu, et retourne un message qui donne un feedback sur ce qu'elle a effectué. Un taxe de 21% est prélevée sur chaque échange
 	"""
 function Exchange_Ressources(World_Matrix,Actors_Matrix,Trp::String,Ress1::String,Ress2::String,Qty)
 	Trp_Strct = Find_Troup(Trp,Actors_Matrix)
@@ -1278,24 +1282,24 @@ function Exchange_Ressources(World_Matrix,Actors_Matrix,Trp::String,Ress1::Strin
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Blé -= Qty
-			Trp_Strct.Bois += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Bois += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		elseif lowercase(Ress2) == "pierre"
 			#alpha = Pir_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Pir_Disc_frac/Blé_Disc_frac
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Blé -= Qty
-			Trp_Strct.Pierre += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Pierre += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		elseif lowercase(Ress2) == "minerais"
 			#alpha = Min_Start/Blé_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Min_Disc_frac/Blé_Disc_frac
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Blé -= Qty
-			Trp_Strct.Minerais += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Minerais += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		end
 	elseif lowercase(Ress1) == "bois" && Trp_Strct.Bois ≥ Qty
 		if lowercase(Ress2) == "blé" 
@@ -1304,24 +1308,24 @@ function Exchange_Ressources(World_Matrix,Actors_Matrix,Trp::String,Ress1::Strin
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Bois -= Qty
-			Trp_Strct.Blé += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Blé += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		elseif lowercase(Ress2) == "pierre"
 			#alpha = Pir_Start/Bois_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Pir_Disc_frac/Bois_Disc_frac
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Bois -= Qty
-			Trp_Strct.Pierre += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Pierre += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		elseif lowercase(Ress2) == "minerais"
 			#alpha = Min_Start/Bois_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Min_Disc_frac/Bois_Disc_frac
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Bois -= Qty
-			Trp_Strct.Minerais += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Minerais += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		end
 	elseif lowercase(Ress1) == "pierre" && Trp_Strct.Pierre ≥ Qty
 		if lowercase(Ress2) == "blé" 
@@ -1330,24 +1334,24 @@ function Exchange_Ressources(World_Matrix,Actors_Matrix,Trp::String,Ress1::Strin
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Pierre -= Qty
-			Trp_Strct.Blé += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Blé += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		elseif lowercase(Ress2) == "bois"
 			#alpha = Bois_Start/Pir_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Bois_Disc_frac/Pir_Disc_frac
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Pierre -= Qty
-			Trp_Strct.Bois += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Bois += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		elseif lowercase(Ress2) == "minerais"
 			#alpha = Min_Start/Pir_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Min_Disc_frac/Pir_Disc_frac
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Pierre -= Qty
-			Trp_Strct.Minerais += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Minerais += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		end
 	elseif lowercase(Ress1) == "minerais" && Trp_Strct.Minerais ≥ Qty
 		if lowercase(Ress2) == "blé" 
@@ -1356,24 +1360,24 @@ function Exchange_Ressources(World_Matrix,Actors_Matrix,Trp::String,Ress1::Strin
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Minerais -= Qty
-			Trp_Strct.Blé += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Blé += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		elseif lowercase(Ress2) == "bois"
 			#alpha = Bois_Start/Min_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Bois_Disc_frac/Min_Disc_frac
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Minerais -= Qty
-			Trp_Strct.Bois += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Bois += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		elseif lowercase(Ress2) == "pierre"
 			#alpha = Pir_Start/Min_Start #ce qu'elle reçoit/ce qu'elle donne
 			beta = Pir_Disc_frac/Min_Disc_frac
 			#Taux = alpha*beta
 			Qty_got = beta*Qty
 			Trp_Strct.Minerais -= Qty
-			Trp_Strct.Pierre += Qty_got
-			pr = @sprintf("Échange effectué (avec un taux de change de %.2f%%)", beta*100)
+			Trp_Strct.Pierre += Qty_got*0.79
+			pr = "Échange effectué (avec un taux de change de $(round(beta*10000)/100)% et une taxe de 21%). Les $Trp ont donc échangé $Qty unités de $Ress1 contre $(Qty_got*0.79) unités de $Ress2. "
 		end
 	else
 		pr = "Échange impossible : vous n'avez pas assez de ressources"
@@ -2510,7 +2514,7 @@ function Execute_Ressource2Salt()
 		Trp = Salt_Data[1]
 		Qty = parse(Int64,Salt_Data[3])
 		Ressource = Salt_Data[2]
-		pr = Ressource2Salt(Troupes,Trp,Ressource,Qty)
+		pr = Ressource2Salt(World,Troupes,Trp,Ressource,Qty)
 		println(pr)
 	catch
 		pr = "Veuillez remplir les cases puis cliquer sur envoyer pour confirmer l'échange"
