@@ -1074,7 +1074,7 @@ function New_Turn(World_Matrix,Actors_Matrix)
 			end
 		end
 		Sizes = round(Sizes)
-		Trp.Sel += Sizes
+		Trp.Sel += 2*Sizes
 		ppr = "$(Trp.Nom) : $(2*Sizes) grammes de sel"
 		push!(Salt_Info, ppr)
 		Sold_Nbr = Trp.Soldats
@@ -1409,6 +1409,33 @@ function Allocate_Ressources(World_Matrix, Actors_Matrix, Trp::String, Ressource
 	elseif lowercase(Ressource) == "sel"
 		Trp_Strct.Sel += Qty
 	end
+end
+
+# ╔═╡ 171d8915-ec10-4afe-9705-6b10f0332213
+"""
+		Add_Interests(Actors_Matrix,rate)
+
+	Cette fonction permet d'ajouter et informer sur la quantité de sel gangée par une troupe grâce aux taux d'intérêts ficés par le Roi. Elle prend 2 arguements : 
+	- Le vecteur qui contient tous les joueurs ;
+	- Le taux d'intérêt **DONNÉ EN DÉCIMALES** (e.g. 1.08 ou 1.12)
+	Elle effectue les modifications nécessaires dans le jeu et informe sur la quantité de sel possédée par la troupe. 
+	"""
+function Add_Interests(Actors_Matrix,rate)
+	Mat = []
+	for element in Actors_Matrix[1:end-1]
+		Old_Salt = element.Sel
+		Trp = element.Nom
+		element.Sel = rate*element.Sel
+		Diff = element.Sel-Old_Salt
+		push!(Mat,(Trp,Diff))
+	end
+	prs = []
+	for i in 1:10
+		pr = "$(Mat[i][1]) : $(round(100*Mat[i][2])/100) grammes de sel"
+		push!(prs,pr)
+	end
+	ppr = "Résumé des apports des placements en sel (le taux d'intérêt fixé par le roi était de $(round(rate*100))%) :\n\n$(prs[1])\n$(prs[2])\n$(prs[3])\n$(prs[4])\n$(prs[5])\n$(prs[6])\n$(prs[7])\n$(prs[8])\n$(prs[9])\n$(prs[10])\n"
+	return ppr
 end
 
 # ╔═╡ d45625d4-9e8f-4724-941e-e9b514a27651
@@ -1818,63 +1845,6 @@ end
 # ╔═╡ 2e77c3fc-94bd-4dfe-a8b9-4302db6b85fb
 md"### 8. Fonctions \"`Execute()`\""
 
-# ╔═╡ 79b63986-ce3a-451e-be10-4bb90f76f93a
-md"### 9. Notes Réunions
-#### To do dernière réunion
-##### Code : 
-- Garde royale : to do
-- Problème fonction affichage multiple : soldats obligatoires
-- Fonction de transfert de ressources (pour payage)
-- Si les territoires sont fluviaux : max 1 bateau. Si côtier : illimité. Si fluvial : plus de blé (eau douce, meilleures cultures)
-##### Pas code : 
-- Carte espion : en réel
-- Premier tour : conquêtes et pas entre nous. Donc premier jour, démogr important
-- Augmenter le prix des constructions
-- Pas de repassage par le centre
-- Countdown 
-- Usage des ressources : "
-
-# ╔═╡ 2d89b205-72d1-4a87-8d1a-1f5ad74704bf
-md""" #### Mises à jour du 07 MAY 24
-- Intégration de l'importance des ports et du nombre de bateaux pour les voyages intercontinentaux (fonctions `Assault` et `Transfer_Troups`)
-- Changement du message d'attaque
-- Créations de fiches de situation pour les troupes
-- Etant donné les gains des ressources à chaque tour lors de l'expérience de jeu précédente, il m'a semblé que 100 était un coefficient suffisamment grand pour les ressources (200 c'est trop)
-- Changement des messages de victoire/défaite lors des attaques
-- Tailles des territoires prises en compte dans les rentes
-- Le marché est intégré : les échanges de ressources troupe-royaume sont possibles et sont régulés par la bourse (formules des resp du pouv éco). Décision : pas d'échnage troupe-troupe (car doublon, et augmente la complexité du jeu et la durée d'un tour.)
-- Il y a maintenant dès le départ un Port et 3 bateaux sur chaque territoire de l'îlot central
-- Territoires fluviaux ajoutés
-- Modification des nombres d'autochtones sur les territoires à la base
-- Le nombre d'autochtones par territoire a été revu (à la hausse en moyenne). Il dépend maintenant de la taille du territoire, de s'il est côtier ou pas, etc
-- Pour pallier cette hausse, les troupes commencent toutes le jeu avec 50 soldats au lieu de 30
-- Fonction worldfiller modifiée
-- Catastrophes introduites : incendies, tremblements de terre, pluies tropicales (intégrées à new turn : à faire avant la convoc des scouts)
-- Fonction `Spread_Troups` : permet la répartition équitable de soldats sur plusieurs territoires
-- Achat de soldats/bateaux possibles en masse. Spawn au point de départ.
-
-#### Mises à jour 28 JUN 24
-- Fonction de sauvegarde opérationnelle (bien expliquer !) + bugs réglés
-- Montagnes supprimées
-- Bourse : facteurs alpha supprimés
-- Vérification des soldes des troupes avant qu'un achat soit effectué
-- Lors d'un nouveau tour, le jeu indique la quantité de sel à ajouter à chaque troupe. Ces informations ont également été rajoutées au rapport général
-- Les rentes en sel dépendent de la taille du territoire ET de s'il est côtier et/ou fluvial
-- Le sel est finalement ilmplémenté dans le jeu aussi, pour être sûr qu'il ne soit pas mis de côté. Une fonction qui montre le classement général du jeu perm en fonction de ça est active
-- Changement du coût d'entretien des soldats : 10 --> 7
-- Des ressources (ou du sel) peuvent être allouées par le Roi
-- Plus de catastrophes
-"""
-
-# ╔═╡ 663892ec-07d8-4237-b942-1d3bc6aed9ce
-md"""
-### To do prochaine réunion
-- Concrétiser pour le démographique (achat de matériel, description précise de chaque épreuve + de chaque défi à faire dans le cadre des autres actis du camp)
-- Cartes espion : réaliser. Si une troupe l'achète, elle reçoit le bundle d'une autre troupe au choix
-- Catastrophes +locales, mais à chaque tours ++ de catastrophes
-- Fonction sauvegarde : inclure les structures troupes 
-"""
-
 # ╔═╡ 018f1d80-9fbc-4d36-a41e-319c86511b76
 md"## PARTIE B - INTERFACE DE JEU"
 
@@ -1887,7 +1857,7 @@ begin
 	#World,Troupes = Temporary_WorldFiller(World,Troupes)
 	
 	#Run the following if you want to recover abackup version of the game (adapt the name !)
-	World, Troupes = Load_Game("./Sauvegardes/Sauvegarde_Terr_2024-07-11.txt","./Sauvegardes/Sauvegarde_Trps_2024-07-11.txt")
+	World, Troupes = Load_Game("./Sauvegardes/Sauvegarde_Terr_2024-07-17.txt","./Sauvegardes/Sauvegarde_Trps_2024-07-17.txt")
 	
 	md"Pour **récupérer une sauvegarde** ou **commencer une nouvelle partie**, veuillez modifier cette cellule. N'oubliez pas de sauvegarder la partie à la fin de chaque tour !"
 end
@@ -2264,6 +2234,7 @@ Sélectionnez ici l'action que le joueur souhaite exécuter :
  $(@bind Ass CheckBox()) Attaquer un territoire\
  $(@bind Exc CheckBox()) Convertir des ressources\
  $(@bind EndTurn CheckBox()) Allocation de sel ou de ressources par le Roi (fin du tour)\
+ $(@bind Intr CheckBox()) Allocation des intérêts sur le sel placé\
 """
 
 # ╔═╡ 34d229fe-06af-4179-b44a-5c1208f86ff0
@@ -2434,6 +2405,21 @@ elseif EndTurn == true
 			$([
 				@htl("<li>$(name): $(Child(name, html"<input type=text>"))")
 				for name in ["Ressource ", "Archers ", "Chevaliers ", "Gueux ", "Hardis ", "Lanciers ", "Paladins ", "Preux ", "Servants ", "Templiers ", "Vaillants "]
+			])
+			</ul>
+			""")
+		end
+	)
+	
+elseif Intr == true
+	@bind Intr_Data PlutoUI.confirm(
+		PlutoUI.combine() do Child
+			@htl("""
+			<h3>Réception des intérêts sur le sel placé </h3>
+			<ul>
+			$([
+				@htl("$(name): $(Child(name, html"<input type=text>"))")
+				for name in ["Taux d'intérêt (fixé par le Roi) "]
 			])
 			</ul>
 			""")
@@ -2612,6 +2598,19 @@ function Execute_Allocate_Ressources()
 	end
 end
 
+# ╔═╡ 43608916-6e72-4cdf-88cf-01c6ad4d81d1
+function Execute_AddInterests()
+	try
+		rte = parse(Float64,Intr_Data[1])
+		pr = Add_Interests(Troupes, rte)
+		print(pr)
+	catch
+		with_terminal() do
+			println("Veuillez remplir les cases puis cliquer sur envoyer pour confirmer les allocations de ressources")
+		end
+	end
+end
+
 # ╔═╡ 3daf9148-39d2-493c-96be-307d1e402436
 if Buy == true
 	if Buy_Mil == false
@@ -2635,6 +2634,8 @@ elseif Exc == true
 	Execute_Ressource_Exchange()
 elseif EndTurn == true
 	Execute_Allocate_Ressources()
+elseif Intr == true
+	Execute_AddInterests()
 end
 
 # ╔═╡ 0f158e7d-ac5f-4832-85a8-a1af5d822e62
@@ -2700,6 +2701,7 @@ end
 # ╟─5882f6dc-0e89-418a-897b-921d233e74e8
 # ╟─2811036d-a050-4b7b-8d9e-5d6a67aacc38
 # ╟─5aef7700-82be-4c8d-9837-f6ffce9f0dbb
+# ╟─171d8915-ec10-4afe-9705-6b10f0332213
 # ╟─d45625d4-9e8f-4724-941e-e9b514a27651
 # ╟─82ce8603-027a-4197-8d9e-d6c471e416ed
 # ╟─ac9c1cb6-78ad-4387-83c5-c83522f5bb6d
@@ -2726,9 +2728,7 @@ end
 # ╟─fc69d958-b5e0-45b8-bdcc-6ca858059fc0
 # ╟─d7142012-cb96-468d-b6f1-e05ebe7e5f8f
 # ╟─ce4e98e2-75db-49e5-a275-0d16a3def59a
-# ╟─79b63986-ce3a-451e-be10-4bb90f76f93a
-# ╟─2d89b205-72d1-4a87-8d1a-1f5ad74704bf
-# ╟─663892ec-07d8-4237-b942-1d3bc6aed9ce
+# ╟─43608916-6e72-4cdf-88cf-01c6ad4d81d1
 # ╟─018f1d80-9fbc-4d36-a41e-319c86511b76
 # ╟─ce6b11f9-8230-4076-8135-12df833d4a82
 # ╟─a0406049-10c0-4b93-9f0e-ac7eebe6d979
