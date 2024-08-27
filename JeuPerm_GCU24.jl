@@ -1086,7 +1086,7 @@ function New_Turn(World_Matrix,Actors_Matrix)
 			Territories = []::Any
 			for element in World_Matrix
 				if element.CaseID in TerrTrp
-					element.Soldats = floor(element.Soldats-(1/3)*element.Soldats)
+					element.Soldats = ceil(element.Soldats-(1/3)*element.Soldats)
 				end
 			end
 			Trp.Blé = 0
